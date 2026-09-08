@@ -1,0 +1,1428 @@
+/* ==========================================================================
+   Windows 11 Notepad Clone — Complete Dark Theme & WinUI 3 Spec
+   DPI 150% Spec: Titlebar 48px, CommandBar 40px, Editor flex:1, StatusBar 32px
+   100% Offline Standalone CSS
+   ========================================================================== */
+
+:root {
+  /* Colors & Material Tokens */
+  --bg-titlebar: #1F1F1F;
+  --bg-chrome: #2B2B2B;
+  --bg-editor: #1F1F1F;
+  --bg-statusbar: #1F1F1F;
+  --stroke-divider: #3A3A3A;
+  --stroke-window: #48484A;
+  
+  --fg-primary: #FFFFFF;
+  --fg-secondary: #C8C8C8;
+  --fg-disabled: #7A7A7A;
+  
+  --fill-hover: rgba(255, 255, 255, 0.06);
+  --fill-press: rgba(255, 255, 255, 0.03);
+  --fill-toggle-on: #4A4A4A;
+  
+  --accent: #4CC2FF;
+  --select-bg: rgba(76, 194, 255, 0.35);
+  --close-hover: #C42B1C;
+  --badge: #F7630C;
+  
+  /* CTF & Tool Accent Colors */
+  --accent-cyan: #38bdf8;
+  --accent-green: #4ade80;
+  --accent-purple: #c084fc;
+  --accent-amber: #fbbf24;
+  --accent-red: #f87171;
+  --card-bg: #2B2B2B;
+  --card-border: #3A3A3A;
+  --card-inner-bg: #181818;
+
+  /* Typography */
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+  --font-editor: "Cascadia Mono", "Consolas", "Courier New", monospace, "Malgun Gothic";
+  
+  /* Shadows */
+  --shadow-flyout: 0 8px 16px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-modal: 0 16px 32px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-titlebar);
+  color: var(--fg-primary);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.4;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+  border: 1px solid var(--stroke-window);
+  border-radius: 8px;
+}
+
+/* Scrollbars (Windows 11 Dark) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #3A3A3A;
+  border-radius: 5px;
+  border: 2px solid var(--bg-editor);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #555555;
+}
+
+/* ==========================================================================
+   BAND 1: Titlebar & TabStrip (48px)
+   ========================================================================== */
+.win-titlebar {
+  height: 48px;
+  background-color: var(--bg-titlebar);
+  display: flex;
+  align-items: flex-end;
+  padding: 0;
+  position: relative;
+  flex-shrink: 0;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  -webkit-app-region: drag;
+}
+
+.win-app-icon {
+  width: 16px;
+  height: 16px;
+  margin: 0 13px;
+  align-self: center;
+  flex-shrink: 0;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.win-tabstrip {
+  display: flex;
+  align-items: flex-end;
+  height: 34px;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-app-region: no-drag;
+}
+.win-tabstrip::-webkit-scrollbar {
+  display: none;
+}
+
+/* Tab Item */
+.win-tab {
+  height: 34px;
+  max-width: 240px;
+  min-width: 80px;
+  padding: 0 10px 0 12px;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: var(--fg-secondary);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms cubic-bezier(0.16, 1, 0.3, 1), color 120ms;
+  position: relative;
+  border: 1px solid transparent;
+  border-bottom: none;
+}
+
+.win-tab:hover {
+  background: var(--fill-hover);
+  color: var(--fg-primary);
+}
+
+/* Active Tab: Seamlessly merges with CommandBar (#2B2B2B) */
+.win-tab.active {
+  background: var(--bg-chrome);
+  color: var(--fg-primary);
+  border-color: transparent;
+  z-index: 10;
+}
+
+.tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Unsaved 6px dot */
+.tab-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--fg-secondary);
+  flex-shrink: 0;
+}
+
+/* Tab Close ✕ */
+.tab-close {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--fg-secondary);
+  flex-shrink: 0;
+}
+.tab-close:hover {
+  background: var(--fill-hover);
+  color: var(--fg-primary);
+}
+
+/* Dot transitions to ✕ on hover or when active */
+.win-tab:hover .tab-dot,
+.win-tab.active .tab-dot {
+  display: none;
+}
+.win-tab:hover .tab-close,
+.win-tab.active .tab-close {
+  display: flex;
+}
+
+/* New Tab (+) Button */
+.btn-new-tab {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--fg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-left: 2px;
+  margin-bottom: 3px;
+  font-size: 16px;
+  transition: background 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.btn-new-tab:hover {
+  background: var(--fill-hover);
+  color: var(--fg-primary);
+}
+.btn-new-tab:active {
+  background: var(--fill-press);
+}
+
+/* Drag Area Spacer */
+.win-drag-spacer {
+  flex: 1;
+  height: 100%;
+}
+
+/* Window Caption Buttons (46x32, 0 radius, top-right flush) */
+.win-captions {
+  display: flex;
+  height: 32px;
+  align-self: flex-start;
+  margin-left: auto;
+  -webkit-app-region: no-drag;
+}
+.win-caption-btn {
+  width: 46px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  color: var(--fg-secondary);
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 80ms;
+}
+.win-caption-btn:hover {
+  background: var(--fill-hover);
+  color: var(--fg-primary);
+}
+.win-caption-btn.close:hover {
+  background: var(--close-hover);
+  color: #FFFFFF;
+}
+
+/* ==========================================================================
+   BAND 2: CommandBar (40px)
+   ========================================================================== */
+.win-commandbar {
+  height: 40px;
+  background-color: var(--bg-chrome);
+  border-bottom: 1px solid var(--stroke-divider);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Left: Menu Items (파일, 편집, 보기, 도구) */
+.cmd-menus {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cmd-menu-item {
+  position: relative;
+}
+
+.cmd-menu-btn {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+  transition: background 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cmd-menu-btn:hover,
+.cmd-menu-item.active .cmd-menu-btn {
+  background: var(--fill-hover);
+  color: var(--fg-primary);
+}
+.cmd-menu-btn:active {
+  background: var(--fill-press);
+}
+
+/* Center: Markdown Toolbar (Absolute Center Position) */
+.cmd-markdown-toolbar {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  transition: opacity 150ms;
+}
+.cmd-markdown-toolbar.hidden {
+  display: none !important;
+}
+
+.tool-btn {
+  width: 32px;
+  height: 28px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--fg-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 120ms cubic-bezier(0.16, 1, 0.3, 1), color 120ms;
+}
+.tool-btn:hover {
+  background: var(--fill-hover);
+  color: var(--fg-primary);
+}
+.tool-btn:active {
+  background: var(--fill-press);
+}
+.tool-btn.active {
+  background: var(--fill-toggle-on);
+  color: var(--fg-primary);
+}
+
+/* Dropdown/Split Tool Button (H1▾, 목록▾, 표▾) */
+.tool-dropdown-btn {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--fg-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: background 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tool-dropdown-btn:hover {
+  background: var(--fill-hover);
+  color: var(--fg-primary);
+}
+.tool-dropdown-btn:active {
+  background: var(--fill-press);
+}
+
+.tool-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--stroke-divider);
+  margin: 0 4px;
+}
+
+/* Right: Notification / Settings / AI */
+.cmd-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-ai-pill {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(192, 132, 252, 0.14);
+  color: var(--accent-purple);
+  border: 1px solid rgba(192, 132, 252, 0.28);
+  cursor: pointer;
+  transition: background 120ms;
+}
+.btn-ai-pill:hover {
+  background: rgba(192, 132, 252, 0.24);
+  color: #FFFFFF;
+}
+
+.btn-cmd-icon {
+  width: 32px;
+  height: 28px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--fg-secondary);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.btn-cmd-icon:hover {
+  background: var(--fill-hover);
+  color: var(--fg-primary);
+}
+.btn-cmd-icon:active {
+  background: var(--fill-press);
+}
+
+/* ==========================================================================
+   FLYOUTS & DROPDOWNS (WinUI 3 Dark Spec: #2C2C2C, 8px radius, shadow)
+   ========================================================================== */
+.win-flyout {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: #2C2C2C;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  box-shadow: var(--shadow-flyout);
+  min-width: 220px;
+  padding: 4px;
+  z-index: 2000;
+  animation: flyoutSlideDown 80ms ease-out;
+}
+
+@keyframes flyoutSlideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cmd-menu-item.active .win-flyout,
+.tool-menu-wrap.active .win-flyout {
+  display: block;
+}
+
+.win-flyout.align-right {
+  left: auto;
+  right: 0;
+}
+
+.flyout-item {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--fg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: background 80ms;
+}
+.flyout-item:hover {
+  background: var(--fill-hover);
+}
+.flyout-item:active {
+  background: var(--fill-press);
+}
+
+.flyout-shortcut {
+  font-size: 11px;
+  color: var(--fg-disabled);
+  margin-left: 16px;
+}
+
+.flyout-divider {
+  height: 1px;
+  background: var(--stroke-divider);
+  margin: 4px 0;
+}
+
+/* ==========================================================================
+   BAND 3: Editor & Workspace Area (flex: 1)
+   ========================================================================== */
+.win-workspace {
+  flex: 1;
+  background-color: var(--bg-editor);
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.workspace-pane {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+  overflow-y: auto;
+  height: 100%;
+}
+.workspace-pane.active {
+  display: flex;
+}
+
+/* Tab 1: Scratchpad (Pure Notepad Editor) */
+#tab-scratchpad {
+  padding: 0;
+}
+
+.notepad-editor {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-editor);
+  color: var(--fg-primary);
+  font-family: var(--font-editor);
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 12px 16px;
+  border: none;
+  outline: none;
+  resize: none;
+  caret-color: var(--accent);
+}
+.notepad-editor::selection {
+  background: var(--select-bg);
+}
+
+/* Floating Find/Replace Panel (Ctrl+F / Ctrl+H) */
+.find-replace-overlay {
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  background: #2C2C2C;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  box-shadow: var(--shadow-flyout);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 100;
+  min-width: 320px;
+}
+.find-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.find-input {
+  flex: 1;
+  height: 28px;
+  background: var(--bg-editor);
+  border: 1px solid var(--stroke-divider);
+  border-radius: 4px;
+  color: var(--fg-primary);
+  padding: 0 8px;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}
+.find-input:focus {
+  border-color: var(--accent);
+}
+
+/* ==========================================================================
+   AI Copilot Sidebar (Collapsible, WinUI Dark)
+   ========================================================================== */
+.ai-copilot-sidebar {
+  width: 360px;
+  background: #242424;
+  border-left: 1px solid var(--stroke-divider);
+  display: flex;
+  flex-direction: column;
+  transition: width 180ms ease, opacity 180ms;
+  flex-shrink: 0;
+  z-index: 20;
+}
+.ai-copilot-sidebar.collapsed {
+  width: 0;
+  border-left: none;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.ai-sidebar-header {
+  height: 40px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--stroke-divider);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #2B2B2B;
+}
+
+.ai-sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--fg-primary);
+}
+
+.ai-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+.ai-badge.online {
+  background: rgba(74, 222, 128, 0.15);
+  color: var(--accent-green);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+.ai-badge.disconnected {
+  background: rgba(248, 113, 113, 0.15);
+  color: var(--accent-red);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+.ai-badge.action-active {
+  background: rgba(192, 132, 252, 0.15);
+  color: var(--accent-purple);
+  border: 1px solid rgba(192, 132, 252, 0.3);
+  cursor: pointer;
+}
+
+.ai-quick-chips {
+  display: flex;
+  gap: 4px;
+  padding: 6px 12px;
+  background: #202020;
+  border-bottom: 1px solid var(--stroke-divider);
+  overflow-x: auto;
+}
+.ai-chip {
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--stroke-divider);
+  color: var(--fg-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ai-chip:hover {
+  background: var(--fill-hover);
+  color: var(--fg-primary);
+}
+
+.ai-chat-messages {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-msg {
+  max-width: 95%;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ai-msg.bot {
+  align-self: flex-start;
+  background: #2C2C2C;
+  border: 1px solid var(--stroke-divider);
+  border-left: 3px solid var(--accent-purple);
+  color: var(--fg-primary);
+}
+.ai-msg.user {
+  align-self: flex-end;
+  background: #1E293B;
+  border: 1px solid #334155;
+  border-right: 3px solid var(--accent-cyan);
+  color: #F1F5F9;
+}
+
+.ai-msg-header {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--fg-disabled);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.ai-chat-input-box {
+  padding: 8px 10px;
+  background: #282828;
+  border-top: 1px solid var(--stroke-divider);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ai-input-textarea {
+  width: 100%;
+  height: 60px;
+  background: var(--bg-editor);
+  border: 1px solid var(--stroke-divider);
+  border-radius: 4px;
+  color: var(--fg-primary);
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+}
+.ai-input-textarea:focus {
+  border-color: var(--accent-purple);
+}
+
+.ai-action-card {
+  background: #23272e;
+  border: 1px solid #3b4252;
+  border-left: 3px solid var(--accent-green);
+  border-radius: 4px;
+  padding: 8px;
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+/* ==========================================================================
+   CTF & WORKBENCH TABS (Dark Theme Integration)
+   ========================================================================== */
+.pane-container {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 14px;
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg-primary);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.guide-box {
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 6px;
+  padding: 10px 14px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.guide-content h4 {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+.guide-content p {
+  font-size: 11px;
+  color: var(--fg-secondary);
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.text-input, .select-input, .textarea-input {
+  background: var(--bg-editor);
+  border: 1px solid var(--stroke-divider);
+  border-radius: 4px;
+  color: var(--fg-primary);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+}
+.text-input:focus, .select-input:focus, .textarea-input:focus {
+  border-color: var(--accent);
+}
+
+.btn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-family: inherit;
+  transition: background 120ms;
+}
+.btn-primary {
+  background: #0078D4;
+  color: #FFFFFF;
+}
+.btn-primary:hover {
+  background: #1084D9;
+}
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--stroke-divider);
+  color: var(--fg-primary);
+}
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.btn-purple {
+  background: #7c3aed;
+  color: #FFFFFF;
+}
+.btn-purple:hover {
+  background: #6d28d9;
+}
+.btn-cyan {
+  background: #0284c7;
+  color: #FFFFFF;
+}
+.btn-cyan:hover {
+  background: #0369a1;
+}
+.btn-danger {
+  background: #dc2626;
+  color: #FFFFFF;
+}
+.btn-danger:hover {
+  background: #b91c1c;
+}
+.btn-xs {
+  height: 22px;
+  padding: 0 6px;
+  font-size: 11px;
+}
+.btn-sm {
+  height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+/* ==========================================================================
+   Multi-Converter Grid & Click-to-Copy Styling (Tab 2)
+   ========================================================================== */
+.converter-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--fg-secondary);
+  margin-top: 14px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--stroke-divider);
+  padding-bottom: 4px;
+}
+
+.converter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .converter-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.conv-item {
+  background: var(--card-inner-bg);
+  border: 1px solid var(--stroke-divider);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.conv-item:hover {
+  border-color: var(--accent);
+}
+
+.conv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.conv-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.conv-val {
+  font-family: var(--font-editor);
+  font-size: 12px;
+  color: var(--accent);
+  background: var(--fill-hover);
+  border: 1px solid var(--stroke-divider);
+  border-radius: 4px;
+  padding: 7px 10px;
+  min-height: 36px;
+  line-height: 1.4;
+  word-break: break-all;
+  white-space: pre-wrap;
+  user-select: text;
+  cursor: pointer;
+  max-height: 100px;
+  overflow-y: auto;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.conv-val:hover {
+  background: var(--fill-press);
+  border-color: var(--accent);
+}
+
+.conv-val:active {
+  transform: scale(0.995);
+}
+
+.clickable-copy {
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.clickable-copy:hover {
+  border-color: var(--accent) !important;
+}
+
+.clickable-copy:active {
+  transform: scale(0.99);
+}
+
+/* Kanban Clue Cards */
+.kanban-board {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  min-height: 380px;
+}
+.kanban-column {
+  background: #242424;
+  border: 1px solid var(--stroke-divider);
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+.kanban-col-header {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--fg-primary);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+.clue-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+.clue-card {
+  background: var(--bg-chrome);
+  border: 1px solid var(--stroke-divider);
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: border-color 100ms;
+}
+.clue-card:hover {
+  border-color: var(--accent);
+}
+.clue-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+/* Stego Canvas Preview */
+.image-preview-wrap {
+  background: #141414;
+  border: 1px solid var(--stroke-divider);
+  border-radius: 6px;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.preview-canvas {
+  max-width: 100%;
+  max-height: 480px;
+  object-fit: contain;
+}
+
+.dropzone {
+  border: 2px dashed var(--stroke-divider);
+  border-radius: 6px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+}
+.dropzone:hover {
+  border-color: var(--accent);
+  background: rgba(76, 194, 255, 0.05);
+}
+
+/* ==========================================================================
+   BAND 4: StatusBar (32px)
+   ========================================================================== */
+.win-statusbar {
+  height: 32px;
+  background-color: var(--bg-statusbar);
+  border-top: 1px solid var(--stroke-divider);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--fg-secondary);
+  flex-shrink: 0;
+}
+
+.status-group-left {
+  display: flex;
+  align-items: center;
+}
+
+.status-group-right {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.status-segment {
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 80ms, color 80ms;
+}
+.status-segment:hover {
+  background: var(--fill-hover);
+  color: var(--fg-primary);
+}
+
+.status-divider {
+  width: 1px;
+  height: 16px;
+  background-color: var(--stroke-divider);
+  margin: 0 8px;
+}
+
+/* ==========================================================================
+   MODALS (WinUI 3 Dark Spec)
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 20px;
+}
+
+.modal-content {
+  background-color: #2B2B2B;
+  border: 1px solid var(--stroke-divider);
+  border-radius: 8px;
+  width: 100%;
+  max-width: 620px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-modal);
+  padding: 20px;
+  color: var(--fg-primary);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--stroke-divider);
+}
+
+.modal-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--fg-primary);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--fg-secondary);
+  font-size: 16px;
+  cursor: pointer;
+}
+.close-btn:hover {
+  color: var(--fg-primary);
+}
+
+/* Toast Notification (Windows Dark) */
+.toast-container {
+  position: fixed;
+  bottom: 44px;
+  right: 20px;
+  z-index: 100000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toast {
+  background: #2C2C2C;
+  color: var(--fg-primary);
+  border: 1px solid var(--stroke-divider);
+  border-left: 3px solid var(--accent);
+  box-shadow: var(--shadow-flyout);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+}
+
+/* ==========================================================================
+   THEME: LIGHT (WHITE) MODE
+   ========================================================================== */
+body.theme-light {
+  --bg-titlebar: #E8E8E8;
+  --bg-chrome: #F3F3F3;
+  --bg-editor: #FFFFFF;
+  --bg-statusbar: #E8E8E8;
+  --stroke-divider: #D4D4D4;
+  --stroke-window: #CCCCCC;
+  
+  --fg-primary: #181818;
+  --fg-secondary: #5A5A5A;
+  --fg-disabled: #9E9E9E;
+  
+  --fill-hover: rgba(0, 0, 0, 0.05);
+  --fill-press: rgba(0, 0, 0, 0.08);
+  --fill-toggle-on: #D0D0D0;
+  
+  --accent: #0067C0;
+  --select-bg: rgba(0, 103, 192, 0.2);
+  --close-hover: #C42B1C;
+  --badge: #C42B1C;
+  
+  --card-bg: #FFFFFF;
+  --card-border: #D8D8D8;
+  --card-inner-bg: #F5F5F5;
+
+  --shadow-flyout: 0 6px 16px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-modal: 0 16px 36px rgba(0, 0, 0, 0.2), 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.card-output-box {
+  background: var(--card-inner-bg) !important;
+  color: var(--fg-primary) !important;
+  border: 1px solid var(--stroke-divider) !important;
+  border-radius: 4px;
+}
+
+.role-card-red {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 6px;
+  padding: 12px;
+  color: var(--fg-primary);
+}
+.role-card-cyan {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 6px;
+  padding: 12px;
+  color: var(--fg-primary);
+}
+.role-card-green {
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  border-radius: 6px;
+  padding: 12px;
+  color: var(--fg-primary);
+}
+.settings-ai-box {
+  background: rgba(192, 132, 252, 0.08);
+  border: 1px solid rgba(192, 132, 252, 0.3);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+  color: var(--fg-primary);
+}
+
+body.theme-light .win-flyout {
+  background: #FFFFFF;
+  border-color: #D8D8D8;
+}
+
+body.theme-light .modal-content {
+  background-color: #FFFFFF;
+  border-color: #D8D8D8;
+  color: #181818;
+}
+
+body.theme-light .ai-copilot-sidebar {
+  background: #F9F9F9;
+}
+
+body.theme-light .ai-sidebar-header {
+  background: #F3F3F3;
+}
+
+body.theme-light .ai-quick-chips {
+  background: #EDEDED;
+}
+
+body.theme-light .ai-chat-input-box {
+  background: #F3F3F3;
+}
+
+body.theme-light .ai-msg.bot {
+  background: #FFFFFF;
+  color: #181818;
+  border-color: #D8D8D8;
+}
+
+body.theme-light .ai-msg.user {
+  background: #E8F0FE;
+  color: #181818;
+  border-color: #BED8F8;
+}
+
+body.theme-light .kanban-column {
+  background: #EFEFEF;
+}
+
+body.theme-light .clue-card {
+  background: #FFFFFF;
+  border-color: #D8D8D8;
+}
+
+body.theme-light .btn-secondary {
+  background: #EEEEEE;
+  color: #181818;
+  border-color: #CCCCCC;
+}
+body.theme-light .btn-secondary:hover {
+  background: #E2E2E2;
+}
+
+body.theme-light .text-input,
+body.theme-light .textarea-input,
+body.theme-light .select-input,
+body.theme-light .select-input-sm,
+body.theme-light .ai-input-textarea {
+  background: #FFFFFF;
+  color: #181818;
+  border-color: #CCCCCC;
+}
+
+body.theme-light ::-webkit-scrollbar-thumb {
+  background: #C4C4C4;
+  border-color: var(--bg-editor);
+}
+body.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: #999999;
+}
+
+body.theme-light .toast {
+  background: #FFFFFF;
+  color: #181818;
+  border-color: #D8D8D8;
+}
+
+body.theme-light .role-card-red {
+  background: #FFF1F2;
+  border-color: #FECDD3;
+  color: #181818;
+}
+body.theme-light .role-card-cyan {
+  background: #F0F9FF;
+  border-color: #BAE6FD;
+  color: #181818;
+}
+body.theme-light .role-card-green {
+  background: #F0FDF4;
+  border-color: #BBF7D0;
+  color: #181818;
+}
+body.theme-light .settings-ai-box {
+  background: #FAF5FF;
+  border-color: #E9D5FF;
+  color: #181818;
+}
+
+body.theme-light .conv-val {
+  background: #FFFFFF;
+  color: #0067C0;
+  border-color: #D4D4D4;
+}
+body.theme-light .conv-val:hover {
+  background: #F0F4F9;
+  border-color: #0067C0;
+}
+
+/* ==========================================================================
+   NO EMOJI & NO COLOR (MONOCHROME / MINIMAL MODE)
+   ========================================================================== */
+body.no-emoji .app-emoji {
+  display: none !important;
+}
+
+body.no-colors {
+  --accent: var(--fg-primary) !important;
+  --accent-cyan: var(--fg-primary) !important;
+  --accent-green: var(--fg-primary) !important;
+  --accent-purple: var(--fg-primary) !important;
+  --accent-amber: var(--fg-primary) !important;
+  --accent-red: var(--fg-primary) !important;
+  --badge: var(--fg-secondary) !important;
+}
+
+body.no-colors .btn-primary,
+body.no-colors .btn-cyan,
+body.no-colors .btn-purple,
+body.no-colors .btn-ai-pill,
+body.no-colors .btn-danger {
+  background: var(--fill-hover) !important;
+  color: var(--fg-primary) !important;
+  border: 1px solid var(--stroke-divider) !important;
+  box-shadow: none !important;
+}
+body.no-colors .btn-primary:hover,
+body.no-colors .btn-cyan:hover,
+body.no-colors .btn-purple:hover,
+body.no-colors .btn-ai-pill:hover,
+body.no-colors .btn-danger:hover {
+  background: var(--fill-press) !important;
+}
+
+body.no-colors .ai-badge {
+  background: var(--fill-hover) !important;
+  color: var(--fg-primary) !important;
+  border: 1px solid var(--stroke-divider) !important;
+}
+
+body.no-colors .ai-msg.bot {
+  border-left: 2px solid var(--fg-disabled) !important;
+}
+body.no-colors .ai-msg.user {
+  border-right: 2px solid var(--fg-disabled) !important;
+}
+
+body.no-colors .flag-box {
+  border-color: var(--stroke-divider) !important;
+  color: var(--fg-primary) !important;
+  background: var(--fill-hover) !important;
+}
+
+body.no-colors .guide-box {
+  border-color: var(--stroke-divider) !important;
+  background: var(--fill-hover) !important;
+}
+
+body.no-colors .clue-badge,
+body.no-colors .ai-chip {
+  background: var(--fill-hover) !important;
+  color: var(--fg-secondary) !important;
+  border-color: var(--stroke-divider) !important;
+}
+
+body.no-colors .role-card-red,
+body.no-colors .role-card-cyan,
+body.no-colors .role-card-green,
+body.no-colors .settings-ai-box,
+body.no-colors .conv-val {
+  background: var(--fill-hover) !important;
+  border-color: var(--stroke-divider) !important;
+  color: var(--fg-primary) !important;
+}

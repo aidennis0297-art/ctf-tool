@@ -1,0 +1,14 @@
+{
+  "name": "ctf-investigation-notepad",
+  "version": "2.0.0",
+  "description": "CTF & Escape Investigation Workbench - Windows 11 Notepad Edition",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-packager . CTF-Notepad --platform=win32 --arch=x64 --out=dist --overwrite --prune=true"
+  },
+  "devDependencies": {
+    "electron": "^44.2.0",
+    "electron-packager": "^17.1.2"
+  }
+}
