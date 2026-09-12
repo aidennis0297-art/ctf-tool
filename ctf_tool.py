@@ -15,6 +15,12 @@ import http.server
 import socketserver
 import webbrowser
 
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 SIGNATURES = [
     (b'\x89PNG\r\n\x1a\n', 'PNG', 'PNG Image'),
     (b'\xff\xd8\xff', 'JPG', 'JPEG Image'),
@@ -286,6 +292,129 @@ def cmd_serve(args):
         except KeyboardInterrupt:
             print("\n서버가 종료되었습니다.")
 
+def cmd_cribdrag(args):
+    """Multi-byte XOR crib dragging analyzer"""
+    c1_hex = args.c1.replace("0x", "").replace(" ", "")
+    c2_hex = args.c2.replace("0x", "").replace(" ", "")
+    crib = args.crib.encode('utf-8')
+
+    b1 = bytes.fromhex(c1_hex)
+    b2 = bytes.fromhex(c2_hex)
+    min_len = min(len(b1), len(b2))
+
+    xor_bytes = bytes([b1[i] ^ b2[i] for i in range(min_len)])
+    print(f"\n[*] C1 XOR C2 ({min_len} 바이트): {xor_bytes.hex()}")
+    print(f"[*] 추정 키워드(Crib): {args.crib} ({len(crib)}B)\n")
+
+    results = []
+    for offset in range(min_len - len(crib) + 1):
+        cand = bytes([xor_bytes[offset + j] ^ crib[j] for j in range(len(crib))])
+        printable = sum(1 for b in cand if 32 <= b <= 126 or b in (9, 10))
+        score = int((printable / len(crib)) * 100)
+        cand_str = cand.decode('latin-1', errors='replace')
+        results.append((score, offset, cand_str))
+
+    results.sort(key=lambda x: x[0], reverse=True)
+    print(f"{'오프셋':<8} {'가독성':<8} {'대응 평문 조각 (P2)'}")
+    print("-" * 50)
+    for score, offset, cand_str in results[:20]:
+        star = "[*]" if score >= 80 else ("   " if score < 50 else " - ")
+        print(f"#{offset:<7} {score}% {star}  {cand_str}")
+
+def cmd_rsa(args):
+    """RSA algebraic attack calculator (small-e, common-mod, fermat)"""
+    mode = args.mode
+    if mode == "smalle":
+        c = int(args.c, 0)
+        e = int(args.e, 0) if args.e else 3
+        low = 1
+        high = c
+        ans = 0
+        while low <= high:
+            mid = (low + high) // 2
+            if mid ** e == c:
+                ans = mid
+                break
+            elif mid ** e < c:
+                ans = mid
+                low = mid + 1
+            else:
+                high = mid - 1
+        print(f"[*] 평문 m (int): {ans}")
+        print(f"[*] 평문 m (hex): {hex(ans)}")
+        try:
+            m_bytes = ans.to_bytes((ans.bit_length() + 7) // 8, 'big')
+            print(f"[+] 평문 m (ASCII/UTF-8): {m_bytes.decode('utf-8')}")
+        except Exception:
+            pass
+
+    elif mode == "commonmod":
+        N = int(args.n, 0)
+        e1 = int(args.e1, 0)
+        c1 = int(args.c1, 0)
+        e2 = int(args.e2, 0)
+        c2 = int(args.c2, 0)
+        def egcd(a, b):
+            if b == 0: return (a, 1, 0)
+            g, x, y = egcd(b, a % b)
+            return (g, y, x - (a // b) * y)
+        g, r, s = egcd(e1, e2)
+        if g != 1:
+            print(f"[-] gcd(e1, e2) = {g} != 1")
+            return
+        if r < 0:
+            c1 = pow(c1, -1, N)
+            r = -r
+        if s < 0:
+            c2 = pow(c2, -1, N)
+            s = -s
+        m = (pow(c1, r, N) * pow(c2, s, N)) % N
+        print(f"[+] 공통 모듈러스 복호화 성공:")
+        print(f"[*] 평문 m (int): {m}")
+        print(f"[*] 평문 m (hex): {hex(m)}")
+        try:
+            m_bytes = m.to_bytes((m.bit_length() + 7) // 8, 'big')
+            print(f"[+] 평문 m (ASCII/UTF-8): {m_bytes.decode('utf-8')}")
+        except Exception:
+            pass
+
+    elif mode == "fermat":
+        import math
+        N = int(args.n, 0)
+        a = math.isqrt(N)
+        if a * a < N: a += 1
+        b2 = a * a - N
+        b = math.isqrt(b2)
+        steps = 0
+        while b * b != b2 and steps < 500000:
+            a += 1
+            b2 = a * a - N
+            b = math.isqrt(b2)
+            steps += 1
+        if b * b == b2:
+            p = a + b
+            q = a - b
+            print(f"[+] 페르마 소인수분해 성공! ({steps} 스텝)")
+            print(f"[*] p: {p}")
+            print(f"[*] q: {q}")
+            print(f"[*] phi: {(p-1)*(q-1)}")
+        else:
+            print("[-] 페르마 한도 초과: p와 q의 차이가 큽니다.")
+
+def cmd_bitflip(args):
+    """AES-CBC IV bit-flipping calculator"""
+    iv = bytes.fromhex(args.iv.replace("0x", "").replace(" ", ""))
+    p_orig = args.orig.encode('utf-8')
+    p_target = args.target.encode('utf-8')
+    new_iv = bytearray(iv)
+    for i in range(min(16, max(len(p_orig), len(p_target)))):
+        o = p_orig[i] if i < len(p_orig) else 0
+        t = p_target[i] if i < len(p_target) else 0
+        new_iv[i] = iv[i] ^ o ^ t
+    print(f"\n[+] 원본 IV: {iv.hex()}")
+    print(f"[+] 변조된 IV': {new_iv.hex()}")
+    print(f"[*] 치환: '{args.orig}' -> '{args.target}'\n")
+
 def main():
     parser = argparse.ArgumentParser(
         description="CTF & 방탈출 오프라인 컴패니언 CLI 툴 (Zero-Dependency)",
@@ -310,6 +439,32 @@ def main():
     p_xor.add_argument("target", help="암호화된 문자열, 16진수 바이트열, 또는 파일 경로")
     p_xor.add_argument("-k", "--key", help="특정 XOR 키 (예: 0x42 또는 66)")
     p_xor.set_defaults(func=cmd_xor)
+
+    # cribdrag
+    p_crib = subparsers.add_parser("cribdrag", help="다중 XOR 키 재사용 크립 드래깅(Crib Dragging)")
+    p_crib.add_argument("c1", help="첫 번째 암호문 (Hex)")
+    p_crib.add_argument("c2", help="두 번째 암호문 (Hex)")
+    p_crib.add_argument("-c", "--crib", required=True, help="추정 키워드 (예: 'the ', 'FLAG{')")
+    p_crib.set_defaults(func=cmd_cribdrag)
+
+    # rsa
+    p_rsa = subparsers.add_parser("rsa", help="RSA 대수 공격 (smalle, commonmod, fermat)")
+    p_rsa.add_argument("mode", choices=["smalle", "commonmod", "fermat"], help="공격 모드")
+    p_rsa.add_argument("-c", help="암호문 c")
+    p_rsa.add_argument("-e", help="공개 지수 e (기본 3)")
+    p_rsa.add_argument("-n", help="모듈러스 N")
+    p_rsa.add_argument("-e1", help="지수 1")
+    p_rsa.add_argument("-c1", help="암호문 1")
+    p_rsa.add_argument("-e2", help="지수 2")
+    p_rsa.add_argument("-c2", help="암호문 2")
+    p_rsa.set_defaults(func=cmd_rsa)
+
+    # bitflip
+    p_flip = subparsers.add_parser("bitflip", help="AES-CBC IV 비트 플리핑 계산")
+    p_flip.add_argument("iv", help="원본 IV (Hex)")
+    p_flip.add_argument("orig", help="원본 첫 블록 평문")
+    p_flip.add_argument("target", help="변조 목표 평문")
+    p_flip.set_defaults(func=cmd_bitflip)
 
     # carve
     p_carve = subparsers.add_parser("carve", help="파일 속 중첩된 숨은 파일(ZIP, PNG, JPG) 추출")
@@ -339,3 +494,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
