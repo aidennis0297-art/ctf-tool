@@ -304,6 +304,36 @@
     </div>
   </div>
 
+  <!-- ====================================================================
+       2.5. 라면물조절장인 팀 전용 현장 퀵 허브 (Team Operations Quick Bar)
+       ==================================================================== -->
+  <div class="team-quick-bar" id="team-quick-bar">
+    <div class="team-bar-left">
+      <span class="team-badge"><span class="app-emoji">🍜 </span>팀: <b>라면물조절장인</b></span>
+      <div class="team-member-chips">
+        <button type="button" class="team-chip" onclick="copyCreds('전성호', 'dennis0297@naver.com', 'e6a11949beadc7d457144e6f0d0937f5be952c9a643afd2bf80a3b2d56b099f0')" title="전성호 계정/임시비번 클립보드 복사">
+          <b>전성호</b> <span>dennis0297</span> 📋
+        </button>
+        <button type="button" class="team-chip" onclick="copyCreds('이도경', 'ldk02045@naver.com', 'df37dc82e3eaf9c2422fc7eec6a077ba9500d196ca4ca924985de52181c76431')" title="이도경 계정/임시비번 클립보드 복사">
+          <b>이도경</b> <span>ldk02045</span> 📋
+        </button>
+        <button type="button" class="team-chip" onclick="copyCreds('조성현', 'josung0812@naver.com', 'fba88c0675cedb477b40bb8b6746c852529b17d44e7e59154c553e95b817895b')" title="조성현 계정/임시비번 클립보드 복사">
+          <b>조성현</b> <span>josung0812</span> 📋
+        </button>
+      </div>
+    </div>
+    <div class="team-bar-right">
+      <div class="team-token-wrap" title="대회 당일 플랫폼 설정에서 발급받은 팀 토큰(CTFd Access Token)을 저장/복사하세요">
+        <span style="font-size:10px; color:var(--accent-cyan); font-weight:700;">🔑 팀 토큰:</span>
+        <input type="password" id="team-access-token" placeholder="CTFd Access Token" onchange="saveTeamToken(this.value)">
+        <button type="button" class="btn btn-secondary btn-xs" onclick="copyTeamToken()" title="팀 토큰 복사">복사</button>
+      </div>
+      <a href="https://discord.gg/BENmZ3sQ9" target="_blank" class="team-link-btn" title="공식 Discord 바로가기">💬 Discord</a>
+      <a href="mailto:roomescapectf2026@gmail.com" class="team-link-btn" title="운영진 문의/제출 이메일">✉️ roomescapectf2026</a>
+      <span class="wifi-pill" title="서울시립대 외 학생용 무선 네트워크">📶 Wi-Fi: <b>Guest@UOS</b></span>
+    </div>
+  </div>
+
   <!-- Hidden file input for JSON import -->
   <input type="file" id="file-import-json" accept=".json" style="display:none;">
 
@@ -377,18 +407,35 @@
             </div>
           </div>
 
-          <!-- 15-Minute Crime Scene Stopwatch -->
-          <div class="scene-timer-container">
-            <div>
-              <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">⏱️ 현장 15분 타이머 (스마트폰 반입 금지)</div>
-              <div id="scene-timer-display" class="timer-digits">15:00</div>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 4px;">
-              <div style="display: flex; gap: 4px;">
-                <button type="button" id="btn-timer-toggle" class="btn btn-cyan btn-xs" onclick="toggleSceneTimer()">▶ 시작</button>
-                <button type="button" class="btn btn-secondary btn-xs" onclick="resetSceneTimer()">🔄 리셋</button>
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <!-- 3-Minute Rush Move Timer (READY Notice) -->
+            <div class="rush-timer-container" id="rush-timer-container" title="대기열에서 [READY / 차례입니다] 알림 시 3분 안에 도착해야 취소되지 않습니다!">
+              <div>
+                <div style="font-size: 10px; font-weight: 700; color: #F87171; text-transform: uppercase;">🚨 차례 알림! 3분 이동</div>
+                <div id="rush-timer-display" class="timer-digits rush-digits">03:00</div>
               </div>
-              <button type="button" class="btn btn-purple btn-xs" onclick="openDiscordImportModal()" title="현장팀이 수사실 퇴장 후 디스코드에 보낸 수첩 메모를 단서로 즉시 일괄 변환">📋 수첩 메모 일괄등록</button>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; gap: 3px;">
+                  <button type="button" id="btn-rush-toggle" class="btn btn-danger btn-xs" onclick="toggleRushTimer()">▶ 출발</button>
+                  <button type="button" class="btn btn-secondary btn-xs" onclick="resetRushTimer()">🔄</button>
+                </div>
+                <div style="font-size: 9px; color: var(--text-muted); text-align: center;">3분 초과 시 취소</div>
+              </div>
+            </div>
+
+            <!-- 15-Minute Crime Scene Stopwatch -->
+            <div class="scene-timer-container">
+              <div>
+                <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">⏱️ 현장 15분 타이머 (스마트폰 반입 금지)</div>
+                <div id="scene-timer-display" class="timer-digits">15:00</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; gap: 4px;">
+                  <button type="button" id="btn-timer-toggle" class="btn btn-cyan btn-xs" onclick="toggleSceneTimer()">▶ 시작</button>
+                  <button type="button" class="btn btn-secondary btn-xs" onclick="resetSceneTimer()">🔄 리셋</button>
+                </div>
+                <button type="button" class="btn btn-purple btn-xs" onclick="openDiscordImportModal()" title="현장팀이 수사실 퇴장 후 디스코드에 보낸 수첩 메모를 단서로 즉시 일괄 변환">📋 수첩 메모 일괄등록</button>
+              </div>
             </div>
           </div>
         </div>
@@ -507,6 +554,31 @@
                 <tr><td><b>Z</b> (제트)</td><td><b>2</b> (이)</td><td>-</td><td>하단 수평선 확인</td></tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- PDF Guide 3: Lock Troubleshooting 5 Checklist -->
+        <div style="margin-top: 10px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 10px 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-weight: 700; color: #fca5a5; font-size: 12px;">🚨 자물쇠가 열리지 않을 때 5대 즉시 점검 체크리스트 (대회 공식 가이드)</span>
+            <span style="font-size: 10px; color: var(--text-muted);">운영진은 장치 정상 작동 여부만 확인하며 정답은 알려주지 않습니다</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; font-size: 11px;">
+            <label style="display: flex; align-items: flex-start; gap: 6px; cursor: pointer; color: var(--fg-secondary);">
+              <input type="checkbox"> <span><b>1. 순서 확인</b>: 문자와 숫자 순서가 단서와 일치하는가?</span>
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 6px; cursor: pointer; color: var(--fg-secondary);">
+              <input type="checkbox"> <span><b>2. 확인선 일치</b>: 모든 다이얼이 자물쇠 확인 위치(중앙 지시선)에 정렬되었는가?</span>
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 6px; cursor: pointer; color: var(--fg-secondary);">
+              <input type="checkbox"> <span><b>3. 문자/숫자 혼동</b>: O vs 0, I vs 1, S vs 5 등을 혼동하지 않았는가?</span>
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 6px; cursor: pointer; color: var(--fg-secondary);">
+              <input type="checkbox"> <span><b>4. 고리/해제버튼</b>: 번호를 맞춘 뒤 잠금 고리를 가볍게 당기거나 버튼을 눌렀는가?</span>
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 6px; cursor: pointer; color: var(--fg-secondary);">
+              <input type="checkbox"> <span><b>5. 이상 신고</b>: 위 항목 확인 후에도 안 열리면 즉시 운영진에게 점검 요청</span>
+            </label>
           </div>
         </div>
       </div>
@@ -1579,16 +1651,16 @@
           <div class="grid-3" style="margin-bottom: 8px;">
             <div class="input-group">
               <label class="input-label">팀명 *</label>
-              <input type="text" id="report-team-name" class="text-input" placeholder="예: 시립수사대" oninput="generateInvestigationReport()">
+              <input type="text" id="report-team-name" class="text-input" placeholder="예: 라면물조절장인" value="라면물조절장인" oninput="generateInvestigationReport()">
             </div>
             <div class="input-group">
               <label class="input-label">팀원 명단 (3인) *</label>
-              <input type="text" id="report-team-members" class="text-input" placeholder="예: 김철수, 이영희, 박민수" oninput="generateInvestigationReport()">
+              <input type="text" id="report-team-members" class="text-input" placeholder="예: 이도경, 조성현, 전성호" value="이도경, 조성현, 전성호" oninput="generateInvestigationReport()">
             </div>
             <div class="input-group">
               <label class="input-label">참가 부문 *</label>
               <select id="report-team-category" class="select-input" onchange="generateInvestigationReport()">
-                <option value="시립대부">시립대부 (재학생 1인 이상)</option>
+                <option value="시립대부" selected>시립대부 (재학생 1인 이상)</option>
                 <option value="일반 대학부">일반 대학부</option>
               </select>
             </div>

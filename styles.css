@@ -1876,4 +1876,168 @@ body.no-colors .conv-val {
   color: var(--accent-cyan);
 }
 
+/* ==========================================================================
+   Team Quick Hub Bar (라면물조절장인 Preset)
+   ========================================================================== */
+.team-quick-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(90deg, #1e1e28 0%, #171c26 100%);
+  border-bottom: 1px solid #333d4e;
+  padding: 4px 12px;
+  font-size: 11px;
+  flex-shrink: 0;
+  gap: 10px;
+}
 
+.team-bar-left, .team-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.team-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.team-member-chips {
+  display: flex;
+  gap: 4px;
+}
+
+.team-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--stroke-divider);
+  color: var(--fg-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.team-chip:hover {
+  background: rgba(76, 194, 255, 0.15);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.team-chip b {
+  color: var(--accent-cyan);
+}
+
+.team-token-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--stroke-divider);
+}
+
+.team-token-wrap input {
+  font-size: 10px;
+  height: 20px;
+  width: 130px;
+  padding: 1px 4px;
+  background: #111;
+  border: 1px solid #333;
+  color: #fff;
+}
+
+.team-link-btn {
+  color: #38bdf8;
+  text-decoration: none;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.15s ease;
+}
+
+.team-link-btn:hover {
+  background: rgba(56, 189, 248, 0.25);
+  color: #ffffff;
+}
+
+.wifi-pill {
+  font-size: 10px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* ==========================================================================
+   3-Minute Rush Timer (차례 알림 즉시 출발)
+   ========================================================================== */
+.rush-timer-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+
+.rush-digits {
+  color: #f87171 !important;
+  font-size: 20px !important;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.rush-active {
+  animation: rushPulse 1s infinite alternate;
+  border-color: #ef4444;
+}
+
+@keyframes rushPulse {
+  0% { box-shadow: 0 0 4px rgba(239, 68, 68, 0.3); }
+  100% { box-shadow: 0 0 14px rgba(239, 68, 68, 0.8); }
+}
+
+/* ==========================================================================
+   Print Preview & A4 Media Styles
+   ========================================================================== */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #report-preview-text, .report-print-container, .report-print-container * {
+    visibility: visible;
+  }
+  .report-print-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    color: #000;
+    background: #fff;
+    padding: 20mm;
+    font-size: 12pt;
+    line-height: 1.6;
+  }
+}

@@ -51,9 +51,11 @@ document.addEventListener('DOMContentLoaded', () => {
   initThemeAndStyle();
   initMenuBar();
   initTabs();
+  initTeamHub();
   initScratchpad();
   initInvestigationBoard();
   initCrimeScenes();
+  initRushTimer();
   initCryptoModule();
   initStegoModule();
   initForensicsModule();
@@ -557,8 +559,8 @@ function switchReportTab(tab) {
 }
 
 function generateInvestigationReport() {
-  const teamName = (document.getElementById('report-team-name')?.value || '').trim() || '시립수사대';
-  const members = (document.getElementById('report-team-members')?.value || '').trim() || '김철수, 이영희, 박민수';
+  const teamName = (document.getElementById('report-team-name')?.value || '').trim() || '라면물조절장인';
+  const members = (document.getElementById('report-team-members')?.value || '').trim() || '이도경, 조성현, 전성호';
   const category = document.getElementById('report-team-category')?.value || '시립대부';
   const conclusion = (document.getElementById('report-conclusion')?.value || '').trim() || 
     '(사건 전말, 범인, 범행 동기, 알리바이 모순, 탈출 경로 등 종합 추리 내용을 작성해주세요. [AI 자동 작성] 버튼 이용 가능)';
@@ -675,8 +677,8 @@ ${c.content || '(내용 없음)'}
 }
 
 function generateExtraWriteup() {
-  const teamName = (document.getElementById('report-team-name')?.value || '').trim() || '시립수사대';
-  const members = (document.getElementById('report-team-members')?.value || '').trim() || '김철수, 이영희, 박민수';
+  const teamName = (document.getElementById('report-team-name')?.value || '').trim() || '라면물조절장인';
+  const members = (document.getElementById('report-team-members')?.value || '').trim() || '이도경, 조성현, 전성호';
   const now = new Date().toLocaleString('ko-KR');
 
   const extraClues = cluesData.filter(c => c.category !== 'scenario' && !c.isEscapeRoomTag);
@@ -833,7 +835,7 @@ function copyActiveReportText() {
 }
 
 function downloadReportTxt() {
-  const teamName = (document.getElementById('report-team-name')?.value || '').trim() || '시립수사대';
+  const teamName = (document.getElementById('report-team-name')?.value || '').trim() || '라면물조절장인';
   let text = '';
   let filename = '';
 
@@ -859,7 +861,7 @@ function downloadReportTxt() {
 }
 
 function printReportHtml() {
-  const teamName = (document.getElementById('report-team-name')?.value || '').trim() || '시립수사대';
+  const teamName = (document.getElementById('report-team-name')?.value || '').trim() || '라면물조절장인';
   const isExtra = currentReportTab === 'extra';
   const raw = isExtra ? 
     (document.getElementById('writeup-preview-text')?.value || '') : 
@@ -1464,6 +1466,143 @@ function updateSceneTimerDisplay() {
   } else if (sceneTimerRemaining <= 300) {
     display.classList.add('warning-10');
   }
+}
+
+// ==========================================================================
+// 라면물조절장인 팀 계정 & 팀 토큰(CTFd Access Token) 허브
+// ==========================================================================
+function initTeamHub() {
+  try {
+    const savedToken = (typeof localStorage !== 'undefined' ? localStorage.getItem('sha_team_token') : '') || '';
+    const tokenInput = typeof document !== 'undefined' ? document.getElementById('team-access-token') : null;
+    if (tokenInput && savedToken) {
+      tokenInput.value = savedToken;
+    }
+  } catch (e) {}
+}
+
+function copyCreds(name, email, tempPw) {
+  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+    navigator.clipboard.writeText(tempPw).then(() => {
+      showToast(`📋 [${name}] 임시 비밀번호 복사 완료!\nID: ${email}`, 'success');
+    }).catch(() => {
+      copyToClipboard(tempPw);
+      showToast(`📋 [${name}] 임시 비밀번호: ${tempPw}`, 'success');
+    });
+  } else {
+    copyToClipboard(tempPw);
+  }
+}
+
+function saveTeamToken(token) {
+  const trimmed = (token || '').trim();
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('sha_team_token', trimmed);
+  }
+  showToast('🔑 팀 토큰(CTFd Access Token)이 안전하게 저장되었습니다.', 'success');
+}
+
+function copyTeamToken() {
+  const tokenInput = typeof document !== 'undefined' ? document.getElementById('team-access-token') : null;
+  const token = (tokenInput?.value || (typeof localStorage !== 'undefined' ? localStorage.getItem('sha_team_token') : '') || '').trim();
+  if (!token) {
+    showToast('저장된 팀 토큰이 없습니다. 대회 당일 플랫폼에서 발급받아 입력해주세요.', 'warning');
+    return;
+  }
+  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+    navigator.clipboard.writeText(token).then(() => {
+      showToast('🔑 팀 토큰이 복사되었습니다! (디스코드 verify에 사용)', 'success');
+    }).catch(() => {
+      copyToClipboard(token);
+    });
+  } else {
+    copyToClipboard(token);
+  }
+}
+
+// ==========================================================================
+// 현장팀 3분 이동 타이머 (READY 알림 즉시 출발 - 3분 내 미입장 시 자동 취소 방지)
+// ==========================================================================
+let rushTimerRemaining = 3 * 60;
+let rushTimerInterval = null;
+
+function initRushTimer() {
+  updateRushTimerDisplay();
+}
+
+function toggleRushTimer() {
+  const btn = typeof document !== 'undefined' ? document.getElementById('btn-rush-toggle') : null;
+  const container = typeof document !== 'undefined' ? document.getElementById('rush-timer-container') : null;
+  if (rushTimerInterval) {
+    clearInterval(rushTimerInterval);
+    rushTimerInterval = null;
+    if (btn) btn.textContent = '▶ 출발';
+    if (container) container.classList.remove('rush-active');
+    showToast('3분 이동 타이머 일시정지', 'info');
+  } else {
+    if (container) container.classList.add('rush-active');
+    rushTimerInterval = setInterval(() => {
+      if (rushTimerRemaining > 0) {
+        rushTimerRemaining--;
+        updateRushTimerDisplay();
+        if (rushTimerRemaining === 60) {
+          playRushWarningTone(600, 0.2);
+          showToast('⚠️ [이동 1분 남음] 서둘러 방 입구로 이동하세요!', 'warning');
+        } else if (rushTimerRemaining === 30) {
+          playRushWarningTone(800, 0.3);
+          showToast('🚨 [이동 30초 남음] 3분 초과 시 등록이 취소됩니다!', 'error');
+        }
+      } else {
+        clearInterval(rushTimerInterval);
+        rushTimerInterval = null;
+        if (btn) btn.textContent = '▶ 출발';
+        if (container) container.classList.remove('rush-active');
+        playRushWarningTone(900, 0.8);
+        alert('🚨 [3분 초과 경고] 3분이 경과했습니다! 대기열 입장이 취소되었는지 현황판을 확인하세요.');
+      }
+    }, 1000);
+    if (btn) btn.textContent = '⏸ 정지';
+    showToast('🚨 3분 이동 카운트다운 시작! (READY 상태 즉시 이동)', 'warning');
+  }
+}
+
+function resetRushTimer() {
+  if (rushTimerInterval) {
+    clearInterval(rushTimerInterval);
+    rushTimerInterval = null;
+  }
+  rushTimerRemaining = 3 * 60;
+  const btn = typeof document !== 'undefined' ? document.getElementById('btn-rush-toggle') : null;
+  if (btn) btn.textContent = '▶ 출발';
+  const container = typeof document !== 'undefined' ? document.getElementById('rush-timer-container') : null;
+  if (container) container.classList.remove('rush-active');
+  updateRushTimerDisplay();
+  showToast('3분 이동 타이머가 03:00으로 리셋되었습니다.', 'info');
+}
+
+function updateRushTimerDisplay() {
+  const display = typeof document !== 'undefined' ? document.getElementById('rush-timer-display') : null;
+  if (!display) return;
+  const m = Math.floor(rushTimerRemaining / 60).toString().padStart(2, '0');
+  const s = (rushTimerRemaining % 60).toString().padStart(2, '0');
+  display.textContent = `${m}:${s}`;
+}
+
+function playRushWarningTone(freq, duration) {
+  try {
+    if (typeof window === 'undefined') return;
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+  } catch (e) {}
 }
 
 // ==========================================================================

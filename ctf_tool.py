@@ -415,8 +415,54 @@ def cmd_bitflip(args):
     print(f"[+] 변조된 IV': {new_iv.hex()}")
     print(f"[*] 치환: '{args.orig}' -> '{args.target}'\n")
 
+def cmd_creds(args):
+    """Display team credentials and operational links"""
+    print("\n" + "="*65)
+    print("🍜 [서울시립대 방탈출 CTF] 라면물조절장인 팀 정보 & 계정 치트시트")
+    print("="*65)
+    print("팀명: 라면물조절장인")
+    print("대회: 2026.09.19 (토) 10:00 ~ 18:30 (현장 접수 마감: 10:00)")
+    print("장소: 서울시립대학교 21세기관 국제회의장 (& 교내 5개 건물)")
+    print("Wi-Fi: Guest@UOS (타대생 전용 무선 네트워크)")
+    print("제출처: roomescapectf2026@gmail.com (17:30 마감 엄수)")
+    print("공식 디스코드: https://discord.gg/BENmZ3sQ9")
+    print("-" * 65)
+    print("선수 계정 정보 (초기 비밀번호):")
+    print("  1) 전성호: dennis0297@naver.com")
+    print("     임시PW: e6a11949beadc7d457144e6f0d0937f5be952c9a643afd2bf80a3b2d56b099f0")
+    print("  2) 이도경: ldk02045@naver.com")
+    print("     임시PW: df37dc82e3eaf9c2422fc7eec6a077ba9500d196ca4ca924985de52181c76431")
+    print("  3) 조성현: josung0812@naver.com")
+    print("     임시PW: fba88c0675cedb477b40bb8b6746c852529b17d44e7e59154c553e95b817895b")
+    print("="*65 + "\n")
+
+def cmd_shacheck(args):
+    """Validate flag against official SHA CTF specifications"""
+    flag = args.flag.strip()
+    print(f"\n🚩 [플래그 규격 검증: {flag}]")
+    pattern = r'^SHA\{([A-Za-z0-9_가-힣]+)\}$'
+    match = re.match(pattern, flag)
+    if match:
+        body = match.group(1)
+        print("[+] ✅ 정규식 통과! 공식 SHA CTF 플래그 규격에 부합합니다.")
+        print(f"[*] 플래그 본문: '{body}'")
+        has_kor = bool(re.search(r'[가-힣]', body))
+        has_num = bool(re.search(r'[0-9]', body))
+        has_alpha = bool(re.search(r'[A-Za-z]', body))
+        has_underscore = '_' in body
+        print(f"[*] 구성 요소: 한글({has_kor}), 영문({has_alpha}), 숫자({has_num}), 언더바({has_underscore})")
+    else:
+        print("[-] ❌ 플래그 규격 불일치!")
+        if not flag.startswith("SHA{"):
+            print("  - 'SHA{' 접두사가 누락되었거나 대소문자가 일치하지 않습니다.")
+        if not flag.endswith("}"):
+            print("  - 닫는 중괄호 '}'가 누락되었습니다.")
+        if re.search(r'[^A-Za-z0-9_가-힣]', flag[4:-1] if len(flag) > 5 else ''):
+            print("  - 허용되지 않은 특수문자 또는 공백/줄바꿈이 포함되어 있습니다. (공식 허용: 알파벳, 한글, 숫자, 밑줄)")
+    print()
+
 def cmd_lock(args):
-    """Analyze lock combinations, 180-deg rotation (6 vs 9), and confusion mapping"""
+    """Analyze lock combinations, 180-deg rotation (6 vs 9), directional lock, and confusion mapping"""
     val = args.code.strip()
     map180 = {
         '0': '0', '1': '1', '6': '9', '8': '8', '9': '6',
@@ -436,6 +482,19 @@ def cmd_lock(args):
     print(f"\n🔐 [공식 자물쇠 도우미 - 코드 분석: {val}]")
     print(f"[*] 원본 입력값: {val}")
     print(f"[*] 180° 상하 반전 (거꾸로 보았을 때): {inv_str} {'(완전 대칭)' if strict else '(비대칭 문자 포함)'}")
+
+    # Directional lock check
+    dir_map = {'상': 'U', '하': 'D', '좌': 'L', '우': 'R', '위': 'U', '아래': 'D', '왼': 'L', '오': 'R', 'U': 'U', 'D': 'D', 'L': 'L', 'R': 'R'}
+    dir_seq = [dir_map[c] for c in val.upper() if c in dir_map or c in dir_map.values()]
+    if dir_seq:
+        seq_str = ''.join(dir_seq)
+        seq_num = ''.join({'U':'1','D':'2','L':'3','R':'4'}[d] for d in dir_seq)
+        seq_pad = ''.join({'U':'8','D':'2','L':'4','R':'6'}[d] for d in dir_seq)
+        print(f"\n🧭 [방향 자물쇠 변환 감지]")
+        print(f"[*] 방향 시퀀스: {seq_str}")
+        print(f"[*] 순차 번호 (1234): {seq_num}")
+        print(f"[*] 키패드 번호 (8246): {seq_pad}")
+
     print("\n--- [공식 가이드라인 및 주의사항] ---")
     print("1. 확인 위치: 빨간 점이나 지시선에 정확히 수평 정렬 후 가볍게 당겨야 열립니다.")
     print("2. 6 vs 9 유의: 거꾸로 돌렸을 때 6이 9로, 9가 6으로 보일 수 있습니다.")
@@ -576,6 +635,15 @@ def main():
     p_decode = subparsers.add_parser("decode", help="Base64, Hex, URL, ROT13, 시저 일괄 자동 디코딩")
     p_decode.add_argument("text", help="디코딩할 문자열")
     p_decode.set_defaults(func=cmd_decode)
+
+    # creds
+    p_creds = subparsers.add_parser("creds", help="라면물조절장인 팀 정보 및 선수 계정 치트시트 출력")
+    p_creds.set_defaults(func=cmd_creds)
+
+    # sha-check
+    p_shacheck = subparsers.add_parser("sha-check", help="공식 SHA CTF 플래그 규격(SHA{...}) 및 문자셋 검증")
+    p_shacheck.add_argument("flag", help="검증할 플래그 문자열")
+    p_shacheck.set_defaults(func=cmd_shacheck)
 
     # serve
     p_serve = subparsers.add_parser("serve", help="로컬 웹 서버 구동 및 워크벤치 브라우저 열기")
