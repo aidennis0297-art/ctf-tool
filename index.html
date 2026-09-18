@@ -42,6 +42,9 @@
       <button type="button" class="btn-new-tab" onclick="menuNewMemo()" title="새 탭 / 새 메모 (Ctrl+Alt+N)">+</button>
     </div>
     <div class="win-drag-spacer"></div>
+    <div class="comp-badge-header" style="margin-right: 12px;" title="서울시립대 방탈출 × CTF 보안 축제 공식 규격 (대문자, 한글, 언더바 지원)">
+      <span class="app-emoji">🏆 </span>SHA × 도어락 2026 (Flag: SHA{...})
+    </div>
     <div class="win-captions">
       <button type="button" class="win-caption-btn" title="최소화" onclick="if(window.electronAPI) window.electronAPI.minimize();">—</button>
       <button type="button" class="win-caption-btn" title="최대화" onclick="if(window.electronAPI) window.electronAPI.maximize();">▢</button>
@@ -350,13 +353,62 @@
       <!-- Flag Assembler Bar -->
       <div class="flag-assembler-bar">
         <div>
-          <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.05em;">🧩 조각 플래그 자동 결합기 (Master Flag)</div>
-          <div id="assembled-flag-output" class="flag-box" style="margin-top: 4px;">아직 수집된 플래그 조각이 없습니다.</div>
+          <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.05em;">🧩 조각 플래그 자동 결합기 (Master Flag - SHA{...})</div>
+          <div id="assembled-flag-output" class="flag-box" style="margin-top: 4px;">아직 수집된 플래그 조각이 없습니다. (예: SHA{secret_flag_done})</div>
         </div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <button class="btn btn-purple" onclick="askAiAnalyzeInvestigationBoard()"><span class="app-emoji">🤖 </span>AI 수사 종합 분석 & 브리핑</button>
           <button class="btn btn-primary" onclick="copyMasterFlag()">플래그 복사 📋</button>
           <button id="btn-new-clue" class="btn btn-cyan" onclick="openClueModal()">새 단서 추가 +</button>
+        </div>
+      </div>
+
+      <!-- 5 Crime Scenes Tracker & 15-Min Timer & Perfect Clear (Official SHA x Doorlock Rules) -->
+      <div class="crime-scene-panel">
+        <div class="crime-scene-header">
+          <div>
+            <div style="font-size: 14px; font-weight: 700; color: var(--fg-primary); display: flex; align-items: center; gap: 8px;">
+              <span>🚨 5대 수사 현장 & 퍼펙트 클리어 트래커</span>
+              <span class="badge-tag">기본 1,000점 (현장당 200점)</span>
+              <span class="badge-tag" style="color: var(--accent-amber); border-color: rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.15);">퍼펙트 클리어 +200~500점</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
+              방탈출 태그 문제 <b>노힌트</b> + 현장당 <b>단 1회만 입장</b>하여 5개 현장 플래그 모두 획득 시 퍼펙트 클리어 적용!
+            </div>
+          </div>
+
+          <!-- 15-Minute Crime Scene Stopwatch -->
+          <div class="scene-timer-container">
+            <div>
+              <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">⏱️ 현장 15분 타이머 (스마트폰 반입 금지)</div>
+              <div id="scene-timer-display" class="timer-digits">15:00</div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <div style="display: flex; gap: 4px;">
+                <button type="button" id="btn-timer-toggle" class="btn btn-cyan btn-xs" onclick="toggleSceneTimer()">▶ 시작</button>
+                <button type="button" class="btn btn-secondary btn-xs" onclick="resetSceneTimer()">🔄 리셋</button>
+              </div>
+              <button type="button" class="btn btn-purple btn-xs" onclick="openDiscordImportModal()" title="현장팀이 수사실 퇴장 후 디스코드에 보낸 수첩 메모를 단서로 즉시 일괄 변환">📋 수첩 메모 일괄등록</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Perfect Clear Live Diagnostic Status Bar -->
+        <div class="perfect-clear-status-bar" id="perfect-clear-status-bar">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-weight: 700;">🏆 퍼펙트 클리어 진단:</span>
+            <span id="perfect-clear-badge" class="risk-badge badge-safe">조건 충족 유지 중</span>
+          </div>
+          <div id="perfect-clear-checklist" style="display: flex; gap: 14px; font-size: 11px; color: var(--fg-secondary);">
+            <span id="cond-flags">🚩 현장 플래그: (0/5)</span>
+            <span id="cond-nohint">💡 노힌트 준수: (5/5)</span>
+            <span id="cond-oneentry">🚪 1회 입장 준수: (5/5)</span>
+          </div>
+        </div>
+
+        <!-- 5 Crime Scene Cards -->
+        <div class="scene-cards-grid" id="crime-scene-cards-grid">
+          <!-- Dynamically populated by renderCrimeScenes() -->
         </div>
       </div>
 
@@ -387,15 +439,19 @@
         </div>
       </div>
 
-      <!-- Lock Helper Card -->
+      <!-- Lock Helper Card (Integrated Official Lock Guidelines) -->
       <div class="card" style="margin-top: 18px;">
         <div class="card-title">
-          <span>🔐 방탈출 자물쇠 & 도어락 도우미</span>
-          <span style="font-size: 11px; font-weight: normal; color: var(--text-muted);">방향 자물쇠 시퀀스 기록 및 아나그램 단어 풀이기</span>
+          <span>🔐 공식 자물쇠 가이드라인 & 도어락 도우미</span>
+          <span style="font-size: 11px; font-weight: normal; color: var(--text-muted);">눈금 정렬선, 6 vs 9 상하 반전, 문자/숫자 혼동 체크표</span>
         </div>
         <div class="grid-2">
+          <!-- Direction Lock -->
           <div>
-            <label class="input-label">방향 자물쇠 (방향 버튼을 순서대로 클릭하세요)</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label class="input-label" style="margin-bottom:0;">방향 자물쇠 (입력 전 섀클 2회 꾹 눌러 리셋!)</label>
+              <span style="font-size: 10px; color: var(--accent-amber);">⚠️ 2회 딸깍 필수</span>
+            </div>
             <div style="display: flex; gap: 6px; margin-bottom: 8px;">
               <button class="btn btn-secondary btn-dir" data-dir="U">⬆️ 상</button>
               <button class="btn btn-secondary btn-dir" data-dir="D">⬇️ 하</button>
@@ -413,18 +469,48 @@
             </div>
           </div>
 
+          <!-- 6 vs 9 Inversion & Anagram -->
           <div>
-            <label class="input-label">아나그램 단어 조합기 (뒤섞인 철자 풀기)</label>
+            <label class="input-label">숫자 6 vs 9 상하 반전 & 아나그램 조합기</label>
             <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-              <input type="text" id="anagram-input" class="text-input" placeholder="예: tepasec, rood, ehid...">
-              <button id="btn-run-anagram" class="btn btn-cyan">검색 🔍</button>
+              <input type="text" id="lock-inversion-input" class="text-input" placeholder="예: 6891 또는 anagram 단어">
+              <button type="button" class="btn btn-cyan" onclick="runLockInversion()">180° 반전 🔄</button>
+              <button id="btn-run-anagram" class="btn btn-purple">아나그램 🔍</button>
             </div>
             <div id="anagram-output" class="card-output-box" style="padding: 10px; font-size: 12px; min-height: 70px;">
-              뒤섞인 영단어 철자를 입력하면 방탈출/CTF 빈출 단어와 매칭해 드립니다.
+              다이얼 숫자를 입력 후 [180° 반전]을 누르면 거꾸로 보았을 때의 번호(6↔9, 8↔8, 1↔1, 0↔0)를 계산합니다.
             </div>
           </div>
         </div>
+
+        <!-- Lock Guidelines & Common Confusion Table -->
+        <div class="lock-guide-grid">
+          <div style="background: var(--card-inner-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--stroke-divider);">
+            <div style="font-size: 11px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 4px;">📐 공식 자물쇠 조작 & 훼손 방지 수칙</div>
+            <ul style="font-size: 11px; color: var(--fg-secondary); line-height: 1.5; padding-left: 16px; margin: 0;">
+              <li><b>확인 위치(눈금선)</b>: 중앙 지시선(빨간 점/선)에 정확히 일치시킨 뒤 가볍게 당깁니다.</li>
+              <li><b>비파괴 원칙</b>: 케이블 타이 절단, 강제 분해, 번호 임의 변경 절대 금지 (적발 시 실격).</li>
+              <li><b>정상 작동 문의</b>: 번호가 맞는데 뻑뻑해서 안 열릴 때만 운영진에게 작동 여부 점검 요청.</li>
+            </ul>
+          </div>
+          <div style="background: var(--card-inner-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--stroke-divider);">
+            <div style="font-size: 11px; font-weight: 700; color: var(--accent-amber); margin-bottom: 4px;">⚠️ 빈출 문자 / 숫자 혼동 체크표</div>
+            <table class="confusion-table">
+              <thead>
+                <tr><th>알파벳</th><th>숫자</th><th>상하 반전</th><th>유의 사항</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><b>O</b> (오)</td><td><b>0</b> (영)</td><td>O ↔ O</td><td>타원 vs 원형 비교</td></tr>
+                <tr><td><b>I / l</b> (아이/엘)</td><td><b>1</b> (일)</td><td>1 ↔ 1</td><td>세로 획 돌기 확인</td></tr>
+                <tr><td><b>S</b> (에스)</td><td><b>5</b> (오)</td><td>-</td><td>곡선 각도 확인</td></tr>
+                <tr><td><b>B</b> (비)</td><td><b>8</b> (팔)</td><td>8 ↔ 8</td><td>상하 대칭 확인</td></tr>
+                <tr><td><b>Z</b> (제트)</td><td><b>2</b> (이)</td><td>-</td><td>하단 수평선 확인</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
+    </div>
     </div>
 
     <!-- ----------------------------------------------------
@@ -735,7 +821,7 @@
         <div class="input-group" style="margin-bottom:8px;">
           <label class="input-label">추정 키워드 (Crib: 공백 포함 영단어나 플래그 포맷)</label>
           <div style="display:flex; gap:8px;">
-            <input type="text" id="crib-drag-word" class="text-input" placeholder="예: the , FLAG{, http, admin, secret, password" value=" the ">
+            <input type="text" id="crib-drag-word" class="text-input" placeholder="예: SHA{, the , FLAG{, http, admin, secret, password" value="SHA{">
             <button class="btn btn-primary" onclick="runCribDragUI()">탐색 🎯</button>
           </div>
         </div>
@@ -1355,24 +1441,27 @@
   <!-- ====================================================================
        6. Clue Modal & About Modal
        ==================================================================== -->
+  <!-- ====================================================================
+       6. Clue Modal & About Modal & Discord Quick Import Modal
+       ==================================================================== -->
   <div id="clue-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 700px;">
       <div class="modal-header">
-        <div class="modal-title">📌 단서 카드 작성 / 수정</div>
+        <div class="modal-title">📌 단서 카드 작성 / 수정 (제8조 출처·증거 규격)</div>
         <button class="close-btn" onclick="closeClueModal()">✕</button>
       </div>
       <form id="clue-form">
         <input type="hidden" id="modal-clue-id">
         <div class="input-group">
-          <label class="input-label">단서 이름 *</label>
-          <input type="text" id="input-clue-title" class="text-input" placeholder="예: 책상 서랍 속 의문의 메모지" required>
+          <label class="input-label">단서 이름 / 발견 물품·문서·화면명 *</label>
+          <input type="text" id="input-clue-title" class="text-input" placeholder="예: 책상 위 연구일지, 모니터 메모장, 금고 번호판" required>
         </div>
         <div class="grid-2">
           <div class="input-group">
             <label class="input-label">단서 분류 (운영규정 제2조)</label>
             <select id="select-clue-category" class="select-input">
               <option value="scenario">🚪 메인 시나리오 (방탈출 연계)</option>
-              <option value="jeopardy">🎯 독립 Jeopardy (CTF 문제)</option>
+              <option value="jeopardy">🎯 추가 의뢰 (독립 CTF 문제)</option>
               <option value="crypto">🔐 암호학 (Crypto)</option>
               <option value="stego">🖼️ 스테가노그래피 (Stego)</option>
               <option value="forensics">🔍 포렌식 / 파일 (Forensics)</option>
@@ -1389,39 +1478,69 @@
             </select>
           </div>
         </div>
-        <div class="grid-2">
+
+        <!-- Official Article 8 Source Requirements (Crucial to prevent deduction) -->
+        <div class="grid-3">
           <div class="input-group">
-            <label class="input-label">발견 위치</label>
-            <input type="text" id="input-clue-location" class="text-input" placeholder="예: 2층 서랍 안쪽, 액자 뒤">
+            <label class="input-label">수사 현장 선택</label>
+            <select id="select-clue-scene" class="select-input">
+              <option value="scene1">현장 1</option>
+              <option value="scene2">현장 2</option>
+              <option value="scene3">현장 3</option>
+              <option value="scene4">현장 4</option>
+              <option value="scene5">현장 5</option>
+              <option value="hq">본부 수사실</option>
+              <option value="online">온라인 의뢰</option>
+            </select>
           </div>
           <div class="input-group">
-            <label class="input-label">담당 팀원</label>
-            <input type="text" id="input-clue-assignee" class="text-input" placeholder="예: 철수">
+            <label class="input-label">출처 방 이름 *</label>
+            <input type="text" id="input-clue-room" class="text-input" placeholder="예: 21세기관 201호, 인문학관">
+          </div>
+          <div class="input-group">
+            <label class="input-label">구체적 발견 위치 (누락 시 감점!)</label>
+            <input type="text" id="input-clue-location" class="text-input" placeholder="예: 책상 세 번째 서랍 이중바닥">
           </div>
         </div>
+
         <div class="grid-2">
+          <div class="input-group">
+            <label class="input-label">담당 팀원</label>
+            <input type="text" id="input-clue-assignee" class="text-input" placeholder="예: 철수 (현장팀) / 영희 (수사팀)">
+          </div>
           <div class="input-group">
             <label class="input-label">해결 시 개방된 다음 장치/공간 (선택)</label>
             <input type="text" id="input-clue-unlocks" class="text-input" placeholder="예: 2번 금고 개방, 실험실 문 개방">
           </div>
-          <div class="input-group" style="display: flex; align-items: center; padding-top: 18px;">
-            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: var(--accent-red);">
-              <input type="checkbox" id="chk-clue-hint"> ⚠️ 공식 힌트 사용함 (제3조 2항 감점)
-            </label>
-          </div>
         </div>
+
+        <div style="display: flex; gap: 16px; margin-bottom: 8px; padding: 6px 10px; background: var(--card-inner-bg); border-radius: 6px;">
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: var(--accent-cyan);">
+            <input type="checkbox" id="chk-clue-tag-escaperoom" checked> 🏷️ '방탈출' 태그 문제 (퍼펙트 클리어 판정 대상)
+          </label>
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: var(--accent-red);">
+            <input type="checkbox" id="chk-clue-hint"> ⚠️ 공식 힌트 사용함 (퍼펙트 클리어 실격)
+          </label>
+        </div>
+
         <div class="input-group">
-          <label class="input-label">단서 내용 / 원본 암호문 / 힌트 메모</label>
-          <textarea id="textarea-clue-content" class="textarea-input" placeholder="단서에 적혀 있던 내용이나 발견된 문자열"></textarea>
+          <label class="input-label">단서 원본 내용 / 암호문 / 메모</label>
+          <textarea id="textarea-clue-content" class="textarea-input" placeholder="단서에 적혀 있던 원본 텍스트, 다이얼 각인 번호, 쪽지 내용 등"></textarea>
         </div>
+
+        <div class="input-group">
+          <label class="input-label" style="color: var(--accent-purple);">추론 연계 내용 (본 단서가 입증하는 사건의 전말/범인/동기 - 제8조 필수 항목)</label>
+          <textarea id="textarea-clue-inference" class="textarea-input" style="min-height: 54px;" placeholder="이 단서를 통해 팀이 밝혀낸 범행 사실이나 추론 내용 (수사보고서 감점 방지용 필수)"></textarea>
+        </div>
+
         <div class="grid-2">
           <div class="input-group">
             <label class="input-label">해독된 비밀번호 / 정답</label>
-            <input type="text" id="input-clue-solution" class="text-input" placeholder="예: 1234, OPEN_SESAME">
+            <input type="text" id="input-clue-solution" class="text-input" placeholder="예: 1984, OPEN_SESAME">
           </div>
           <div class="input-group">
-            <label class="input-label">조각 플래그 (Flag Fragment)</label>
-            <input type="text" id="input-clue-flagpart" class="text-input" placeholder="예: CTF{part1_">
+            <label class="input-label">획득 플래그 (SHA{...})</label>
+            <input type="text" id="input-clue-flagpart" class="text-input" placeholder="예: SHA{field1_clue_found}">
           </div>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--win-border-light);">
@@ -1435,47 +1554,142 @@
     </div>
   </div>
 
-  <!-- Investigation Report Modal (Bonus Points) -->
+  <!-- Investigation Report & Write-up Modal (Article 8 - 3,000 Points Master) -->
   <div id="report-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-content" style="max-width: 720px;">
-      <div class="modal-header">
-        <div class="modal-title">📑 최종 수사 보고서 자동 생성 (제3조 1항 보너스 점수)</div>
+    <div class="modal-content" style="max-width: 820px; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="flex-shrink: 0;">
+        <div class="modal-title">📑 공식 수사보고서 & 라이트업 자동 생성기 (운영규정 제8조 / 3,000점)</div>
         <button class="close-btn" onclick="closeReportModal()">✕</button>
       </div>
-      <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
-        운영규정 제3조 1항에 따른 <b>보너스 점수 획득용 최종 수사 보고서</b>입니다.<br>
-        수사 보드에 등록된 모든 단서와 플래그를 정돈된 보고서 서식으로 자동 취합합니다.
+
+      <!-- Report Tabs -->
+      <div class="report-tab-bar" style="flex-shrink: 0;">
+        <button type="button" class="report-tab-btn active" id="tab-btn-main-report" onclick="switchReportTab('main')">📑 메인 의뢰 수사보고서 (3,000점)</button>
+        <button type="button" class="report-tab-btn" id="tab-btn-extra-writeup" onclick="switchReportTab('extra')">🎯 추가 의뢰 라이트업</button>
+        <button type="button" class="report-tab-btn" id="tab-btn-penalty-defense" onclick="switchReportTab('penalty')">🚨 감점 방지 검사기 (Penalty Check)</button>
       </div>
-      <div class="grid-2" style="margin-bottom: 8px;">
-        <div class="input-group">
-          <label class="input-label">팀명 / 참가분야</label>
-          <input type="text" id="report-team-name" class="text-input" placeholder="예: 시립대 수사대 (시립대부 / 대학부)">
+
+      <div style="overflow-y: auto; flex: 1; padding-right: 4px;">
+        <!-- TAB 1: Main Investigation Report -->
+        <div id="report-panel-main">
+          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.5;">
+            운영규정 제8조에 따른 <b>메인 의뢰 대상 수사보고서 (배점 3,000점 - 최대 승부처)</b>입니다.<br>
+            필수 3대 구성 항목: <b>① 추론 내용</b>, <b>② 관련 단서</b>, <b>③ 출처 (방 이름, 문서/물품/화면, 발견 위치)</b>
+          </div>
+          <div class="grid-3" style="margin-bottom: 8px;">
+            <div class="input-group">
+              <label class="input-label">팀명 *</label>
+              <input type="text" id="report-team-name" class="text-input" placeholder="예: 시립수사대" oninput="generateInvestigationReport()">
+            </div>
+            <div class="input-group">
+              <label class="input-label">팀원 명단 (3인) *</label>
+              <input type="text" id="report-team-members" class="text-input" placeholder="예: 김철수, 이영희, 박민수" oninput="generateInvestigationReport()">
+            </div>
+            <div class="input-group">
+              <label class="input-label">참가 부문 *</label>
+              <select id="report-team-category" class="select-input" onchange="generateInvestigationReport()">
+                <option value="시립대부">시립대부 (재학생 1인 이상)</option>
+                <option value="일반 대학부">일반 대학부</option>
+              </select>
+            </div>
+          </div>
+          <div class="input-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label class="input-label" style="margin-bottom: 0;">1. 추론 내용 (사건 전말 종합 추리: 범인, 동기, 탈출 경로) *</label>
+              <button class="btn btn-purple btn-xs" onclick="askAiGenerateReportStory()">🤖 AI 사건 시나리오/결론 자동 작성</button>
+            </div>
+            <textarea id="report-conclusion" class="textarea-input" style="min-height: 80px;" placeholder="현장의 단서들을 종합하여 밝혀낸 범인, 범행 동기, 알리바이 모순, 최종 탈출 경로를 논리적으로 서술하세요. (위 AI 버튼으로 자동 초안 생성 가능)" oninput="generateInvestigationReport()"></textarea>
+          </div>
+          <div class="input-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label class="input-label" style="margin-bottom: 0;">생성된 수사 보고서 미리보기 (Markdown/Print Preview)</label>
+              <div style="display: flex; gap: 4px;">
+                <button class="btn btn-cyan btn-xs" onclick="generateInvestigationReport()">새로고침 🔄</button>
+                <button class="btn btn-danger btn-xs" onclick="runPenaltyDefenseCheck()">🚨 감점 검사 실행</button>
+              </div>
+            </div>
+            <textarea id="report-preview-text" class="textarea-input" style="min-height: 220px; font-family: var(--font-mono); font-size: 12px; line-height: 1.5;" readonly></textarea>
+          </div>
         </div>
-        <div class="input-group">
-          <label class="input-label">팀원 명단 (3인)</label>
-          <input type="text" id="report-team-members" class="text-input" placeholder="예: 김철수, 이영희, 박민수">
+
+        <!-- TAB 2: Extra Write-up (추가 의뢰 라이트업) -->
+        <div id="report-panel-extra" style="display: none;">
+          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.5;">
+            운영규정 제8조에 따른 <b>추가 의뢰 대상 라이트업 (팀명_라이트업.pdf - 자유 양식)</b>입니다.<br>
+            독립 Jeopardy 및 추가 의뢰 문제들의 풀이 과정, 공격 스크립트, 획득 플래그를 정돈합니다.
+          </div>
+          <div class="input-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label class="input-label" style="margin-bottom: 0;">추가 의뢰 라이트업 본문</label>
+              <button class="btn btn-cyan btn-xs" onclick="generateExtraWriteup()">라이트업 새로고침 🔄</button>
+            </div>
+            <textarea id="writeup-preview-text" class="textarea-input" style="min-height: 280px; font-family: var(--font-mono); font-size: 12px; line-height: 1.5;" readonly></textarea>
+          </div>
+        </div>
+
+        <!-- TAB 3: Penalty Defense Validator -->
+        <div id="report-panel-penalty" style="display: none;">
+          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.5;">
+            운영규정 제8조 감점 기준(<b>출처 누락, 추론-증거 불일치, 제시 가능한 증거 누락, 반박 증거 존재</b>)을 사전에 전수 검사합니다.
+          </div>
+          <div id="penalty-defense-output" class="penalty-alert-box pass">
+            아래 [감점 방지 사전 검사 실행] 버튼을 클릭하면 등록된 모든 단서와 보고서 서식을 진단합니다.
+          </div>
+          <button type="button" class="btn btn-danger" style="width: 100%;" onclick="runPenaltyDefenseCheck()">🔍 제8조 감점 방지 전수 검사 실행</button>
+        </div>
+
+        <!-- Official Email Submission Guidelines Checklist -->
+        <div class="email-submit-guide">
+          <div style="font-weight: 700; color: var(--accent-cyan); margin-bottom: 4px; display: flex; justify-content: space-between;">
+            <span>📬 공식 이메일 제출 가이드라인 (17:30 마감 엄수)</span>
+            <span style="color: #F87171;">⚠️ 17:30:00 초과 시 제출 무효</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 80px 1fr; gap: 4px; font-size: 11px;">
+            <span style="color: var(--fg-secondary);">수신처:</span>
+            <span><b style="color: var(--accent-green);">roomescapectf2026@gmail.com</b> <button type="button" class="btn btn-secondary btn-xs" onclick="copyToClipboard('roomescapectf2026@gmail.com')">복사</button></span>
+            <span style="color: var(--fg-secondary);">메일 제목:</span>
+            <span><b style="color: var(--accent-cyan);">[라이트업/수사보고서] <span class="report-team-title-disp">팀명</span></b></span>
+            <span style="color: var(--fg-secondary);">첨부 파일:</span>
+            <span>1) <b style="color: var(--accent-amber);"><span class="report-team-title-disp">팀명</span>_수사보고서.pdf</b> (메인 의뢰 대상)<br>2) <b style="color: var(--accent-purple);"><span class="report-team-title-disp">팀명</span>_라이트업.pdf</b> (추가 의뢰 대상)</span>
+          </div>
         </div>
       </div>
-      <div class="input-group">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <label class="input-label" style="margin-bottom: 0;">사건의 전말 및 최종 스토리 종합 추리 (사건 결론 / 탈출 시나리오)</label>
-          <button class="btn btn-purple btn-sm" onclick="askAiGenerateReportStory()">🤖 AI 사건 시나리오/결론 자동 작성</button>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--win-border-light); flex-shrink: 0;">
+        <div style="display: flex; gap: 6px;">
+          <button class="btn btn-secondary" onclick="downloadReportTxt()">MD/TXT 파일 저장 💾</button>
+          <button class="btn btn-cyan" onclick="printReportHtml()">인쇄 / PDF 저장 🖨️</button>
         </div>
-        <textarea id="report-conclusion" class="textarea-input" placeholder="단서들을 종합하여 밝혀낸 범인, 사건의 동기, 최종 탈출 경로 등 스토리 추론 내용을 적으세요. (또는 위 [AI 자동 작성] 버튼을 누르세요)"></textarea>
-      </div>
-      <div class="input-group">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <label class="input-label" style="margin-bottom: 0;">생성된 수사 보고서 미리보기 (Markdown/Text)</label>
-          <button class="btn btn-cyan btn-sm" onclick="generateInvestigationReport()">보고서 새로고침 🔄</button>
-        </div>
-        <textarea id="report-preview-text" class="textarea-input" style="min-height: 220px; font-family: var(--font-mono); font-size: 12px; line-height: 1.5;" readonly></textarea>
-      </div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--win-border-light);">
-        <button class="btn btn-secondary" onclick="downloadReportTxt()">TXT 파일로 저장 💾</button>
         <div style="display: flex; gap: 6px;">
           <button class="btn btn-secondary" onclick="closeReportModal()">닫기</button>
-          <button class="btn btn-primary" onclick="copyToClipboard(document.getElementById('report-preview-text').value)">보고서 전체 복사 📋</button>
+          <button class="btn btn-primary" onclick="copyActiveReportText()">현재 탭 전체 복사 📋</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Discord Quick Note Import Modal -->
+  <div id="discord-import-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <div class="modal-title">📋 현장팀 수첩 메모 일괄 등록 (디스코드 전송 텍스트 변환)</div>
+        <button class="close-btn" onclick="closeDiscordImportModal()">✕</button>
+      </div>
+      <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.5;">
+        현장팀이 수사실(스마트폰 반입 금지)에서 퇴장 후 디스코드에 올린 수첩 메모를 붙여넣으세요.<br>
+        방 이름, 단서명, 발견 위치, 암호/패스코드를 자동으로 분석하여 단서 카드로 즉시 생성합니다.
+      </div>
+      <div class="input-group">
+        <label class="input-label">디스코드 메모 텍스트 붙여넣기</label>
+        <textarea id="discord-raw-input" class="textarea-input" style="min-height: 180px; font-family: var(--font-mono); font-size: 12px;" placeholder="예시 양식:
+[현장 1 - 인문학관 201호]
+- 단서: 의문의 책상 쪽지 / 위치: 서랍 안쪽 / 암호: SHA{key1_...} / 비고: 노힌트 해결
+- 단서: 벽면 액자 속 다이얼 / 위치: 액자 뒤편 / 정답: 1984
+- 단서: 모니터 화면 메모 / 위치: 컴퓨터 책상 / 풀이: BASE64 디코딩"></textarea>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 12px;">
+        <button type="button" class="btn btn-secondary" onclick="closeDiscordImportModal()">취소</button>
+        <button type="button" class="btn btn-primary" onclick="processDiscordImport()">단서 일괄 등록 🚀</button>
       </div>
     </div>
   </div>

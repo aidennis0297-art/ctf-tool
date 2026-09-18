@@ -107,8 +107,8 @@ def cmd_strings(args):
     for s in matches:
         if grep and grep not in s.lower():
             continue
-        # Highlight flag
-        is_flag = bool(re.search(r'flag\{|ctf\{', s, re.IGNORECASE))
+        # Highlight flag (SHA, FLAG, CTF)
+        is_flag = bool(re.search(r'sha\{|flag\{|ctf\{', s, re.IGNORECASE))
         prefix = "🎉 [FLAG] " if is_flag else "    "
         print(f"{prefix}{s}")
         shown += 1
@@ -415,6 +415,96 @@ def cmd_bitflip(args):
     print(f"[+] 변조된 IV': {new_iv.hex()}")
     print(f"[*] 치환: '{args.orig}' -> '{args.target}'\n")
 
+def cmd_lock(args):
+    """Analyze lock combinations, 180-deg rotation (6 vs 9), and confusion mapping"""
+    val = args.code.strip()
+    map180 = {
+        '0': '0', '1': '1', '6': '9', '8': '8', '9': '6',
+        '2': '2', '5': '5', 'b': 'q', 'd': 'p', 'p': 'd', 'q': 'b',
+        'n': 'u', 'u': 'n', 'w': 'm', 'm': 'w'
+    }
+    inv = []
+    strict = True
+    for ch in reversed(val.lower()):
+        if ch in map180:
+            inv.append(map180[ch])
+        else:
+            inv.append(ch + '?')
+            strict = False
+    inv_str = ''.join(inv)
+
+    print(f"\n🔐 [공식 자물쇠 도우미 - 코드 분석: {val}]")
+    print(f"[*] 원본 입력값: {val}")
+    print(f"[*] 180° 상하 반전 (거꾸로 보았을 때): {inv_str} {'(완전 대칭)' if strict else '(비대칭 문자 포함)'}")
+    print("\n--- [공식 가이드라인 및 주의사항] ---")
+    print("1. 확인 위치: 빨간 점이나 지시선에 정확히 수평 정렬 후 가볍게 당겨야 열립니다.")
+    print("2. 6 vs 9 유의: 거꾸로 돌렸을 때 6이 9로, 9가 6으로 보일 수 있습니다.")
+    print("3. 혼동 쉬운 문자: O(오)↔0(영), I/l(아이/엘)↔1(일), S(에스)↔5(오), B(비)↔8(팔), Z(제트)↔2(이)")
+    print("4. 방향 자물쇠: 시작 전 섀클을 2회 아래로 꾹 눌러 '딸깍' 리셋 필수!\n")
+
+def cmd_checkreport(args):
+    """Validate Article 8 report compliance for SHA x Doorlock competition"""
+    import json
+    filepath = args.file
+    if not os.path.isfile(filepath):
+        print(f"[-] 파일이 존재하지 않습니다: {filepath}")
+        return
+    with open(filepath, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    print(f"\n📑 [공식 제8조 수사보고서 사전 검증: {os.path.basename(filepath)}]")
+    warnings = []
+    passes = []
+
+    if filepath.endswith('.json'):
+        try:
+            data = json.loads(content)
+            clues = data.get('clues', data if isinstance(data, list) else [])
+            scenes = data.get('crimeScenes', [])
+            print(f"[*] 등록된 단서 수: {len(clues)}개, 수사 현장: {len(scenes)}개")
+
+            missing_src = [c for c in clues if not c.get('room') or not c.get('location')]
+            if missing_src:
+                warnings.append(f"출처(방/위치) 누락 단서 {len(missing_src)}건: {', '.join(c.get('title', '무제') for c in missing_src)}")
+            else:
+                passes.append("모든 단서의 출처(방 이름, 구체적 위치) 기재 완료")
+
+            missing_inf = [c for c in clues if not c.get('inference')]
+            if missing_inf:
+                warnings.append(f"추론 연계 내용 누락 단서 {len(missing_inf)}건: {', '.join(c.get('title', '무제') for c in missing_inf)}")
+            else:
+                passes.append("모든 단서의 추론 연계 증거 기재 완료")
+
+            re_entries = [s for s in scenes if s.get('entries', 1) > 1]
+            if re_entries:
+                warnings.append(f"1회 초과 입장(재입장) 발생 현장: {', '.join(s.get('name', '') for s in re_entries)} -> 퍼펙트 실격")
+            else:
+                passes.append("5대 현장 모두 1회 입장 준수")
+        except Exception as e:
+            print(f"[-] JSON 파싱 오류: {e}")
+            return
+    else:
+        if '추론 내용' in content:
+            passes.append("추론 내용(제8조 1항) 섹션 존재 확인")
+        else:
+            warnings.append("추론 내용 섹션이 누락되었습니다.")
+
+        if '출처' in content:
+            passes.append("출처(제8조 3항) 명시 확인")
+        else:
+            warnings.append("출처(방 이름 및 발견 위치) 명시가 부족합니다.")
+
+    print("\n--- [검증 결과 요약] ---")
+    for p in passes:
+        print(f"  [+] {p}")
+    for w in warnings:
+        print(f"  [!] ⚠️ 감점 주의: {w}")
+
+    if not warnings:
+        print("\n✅ 제8조 감점 위험 요소 0건! 3,000점 만점 제출 준비 완료!\n")
+    else:
+        print(f"\n⚠️ 총 {len(warnings)}건의 보완 사항이 있습니다. 제출 전 반드시 수정하세요!\n")
+
 def main():
     parser = argparse.ArgumentParser(
         description="CTF & 방탈출 오프라인 컴패니언 CLI 툴 (Zero-Dependency)",
@@ -465,6 +555,16 @@ def main():
     p_flip.add_argument("orig", help="원본 첫 블록 평문")
     p_flip.add_argument("target", help="변조 목표 평문")
     p_flip.set_defaults(func=cmd_bitflip)
+
+    # lock
+    p_lock = subparsers.add_parser("lock", help="공식 자물쇠 180도 반전(6 vs 9) 및 혼동 문자 분석")
+    p_lock.add_argument("code", help="분석할 자물쇠 숫자/문자 코드")
+    p_lock.set_defaults(func=cmd_lock)
+
+    # checkreport
+    p_rep = subparsers.add_parser("checkreport", help="수사보고서 제8조 규격 및 감점 위험 전수 검증")
+    p_rep.add_argument("file", help="검증할 수사보고서(.md) 또는 수사보드 백업(.json)")
+    p_rep.set_defaults(func=cmd_checkreport)
 
     # carve
     p_carve = subparsers.add_parser("carve", help="파일 속 중첩된 숨은 파일(ZIP, PNG, JPG) 추출")

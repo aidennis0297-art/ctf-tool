@@ -1604,3 +1604,276 @@ body.no-colors .conv-val {
   font-weight: 600;
 }
 
+/* ==========================================================================
+   OFFICIAL COMPETITION SYNCHRONIZATION (SHA × DOORLOCK 2026) STYLES
+   ========================================================================== */
+
+/* Mode & Competition Indicator */
+.comp-badge-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: var(--accent-cyan);
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+/* 5 Crime Scenes Tracker Panel */
+.crime-scene-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--stroke-card);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.crime-scene-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--stroke-divider);
+}
+
+.scene-timer-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card-inner-bg);
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--stroke-divider);
+}
+
+.timer-digits {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--accent-cyan);
+  min-width: 76px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.timer-digits.warning-10 {
+  color: #FBBF24;
+}
+
+.timer-digits.critical-13 {
+  color: #F87171;
+  animation: pulse-red 1s infinite;
+}
+
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.perfect-clear-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid var(--stroke-divider);
+  padding: 8px 14px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scene-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.scene-card {
+  background: var(--card-inner-bg);
+  border: 1px solid var(--stroke-divider);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.scene-card.solved {
+  border-color: rgba(74, 222, 128, 0.5);
+  background: rgba(74, 222, 128, 0.05);
+}
+
+.scene-card.investigating {
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(56, 189, 248, 0.05);
+}
+
+.scene-card.disqualified {
+  border-color: rgba(248, 113, 113, 0.5);
+}
+
+.scene-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.scene-badge-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+
+.scene-status-pill {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.scene-status-pill.status-todo {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--fg-secondary);
+}
+
+.scene-status-pill.status-active {
+  background: rgba(56, 189, 248, 0.2);
+  color: var(--accent-cyan);
+}
+
+.scene-status-pill.status-done {
+  background: rgba(74, 222, 128, 0.2);
+  color: #4ADE80;
+}
+
+.scene-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scene-entry-counter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--fg-secondary);
+  background: var(--bg-editor);
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--stroke-divider);
+}
+
+.scene-flag-input {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 4px 6px;
+  background: var(--bg-editor);
+  border: 1px solid var(--stroke-divider);
+  border-radius: 4px;
+  color: var(--fg-primary);
+  width: 100%;
+}
+
+.scene-flag-input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+/* Report Modal Tabs & Penalty Validator */
+.report-tab-bar {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--stroke-divider);
+  margin-bottom: 12px;
+  padding-bottom: 2px;
+}
+
+.report-tab-btn {
+  background: none;
+  border: none;
+  color: var(--fg-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.report-tab-btn:hover {
+  color: var(--fg-primary);
+  background: var(--fill-hover);
+}
+
+.report-tab-btn.active {
+  color: var(--accent-cyan);
+  background: var(--card-inner-bg);
+  border-bottom: 2px solid var(--accent-cyan);
+}
+
+.penalty-alert-box {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #FCA5A5;
+}
+
+.penalty-alert-box.pass {
+  background: rgba(74, 222, 128, 0.1);
+  border-color: rgba(74, 222, 128, 0.3);
+  color: #86EFAC;
+}
+
+.email-submit-guide {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px dashed var(--accent-cyan);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* Lock Visual Guide & Confusion Table */
+.lock-guide-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.confusion-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.confusion-table th, .confusion-table td {
+  border: 1px solid var(--stroke-divider);
+  padding: 4px 6px;
+  text-align: center;
+}
+
+.confusion-table th {
+  background: var(--card-inner-bg);
+  color: var(--accent-cyan);
+}
+
+

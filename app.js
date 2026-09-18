@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initTabs();
   initScratchpad();
   initInvestigationBoard();
+  initCrimeScenes();
   initCryptoModule();
   initStegoModule();
   initForensicsModule();
@@ -296,7 +297,7 @@ function applyMarkdownFormat(formatType) {
       newCursorPos = start + replacement.length;
       break;
     case 'table-clue':
-      replacement = `\n| 번호 | 단서명 | 단서 유형 | 플래그 조각 | 비고 |\n| :--- | :--- | :--- | :--- | :--- |\n| #1 | 의문의 쪽지 | 암호문 | FLAG{part1_...} | ROT13 해독 |\n`;
+      replacement = `\n| 번호 | 단서명 | 단서 유형 | 플래그 조각 | 출처 (방/위치) | 비고 |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n| #1 | 의문의 쪽지 | 암호문 | SHA{part1_...} | 인문학관 201호 (서랍) | ROT13 해독 |\n`;
       newCursorPos = start + replacement.length;
       break;
     default:
@@ -512,12 +513,17 @@ function initShortcuts() {
   });
 }
 
-// Final Investigation Report Functions (Rule Article 3 Section 1)
+// ==========================================================================
+// Official Investigation Report & Write-up System (Official Rule Article 8)
+// ==========================================================================
+let currentReportTab = 'main';
+
 function openReportModal() {
   closeAllMenus();
   const modal = document.getElementById('report-modal');
   if (modal) {
     modal.style.display = 'flex';
+    switchReportTab('main');
     generateInvestigationReport();
   }
 }
@@ -527,103 +533,369 @@ function closeReportModal() {
   if (modal) modal.style.display = 'none';
 }
 
+function switchReportTab(tab) {
+  currentReportTab = tab;
+  const btnMain = document.getElementById('tab-btn-main-report');
+  const btnExtra = document.getElementById('tab-btn-extra-writeup');
+  const btnPenalty = document.getElementById('tab-btn-penalty-defense');
+
+  const panelMain = document.getElementById('report-panel-main');
+  const panelExtra = document.getElementById('report-panel-extra');
+  const panelPenalty = document.getElementById('report-panel-penalty');
+
+  if (btnMain) btnMain.classList.toggle('active', tab === 'main');
+  if (btnExtra) btnExtra.classList.toggle('active', tab === 'extra');
+  if (btnPenalty) btnPenalty.classList.toggle('active', tab === 'penalty');
+
+  if (panelMain) panelMain.style.display = (tab === 'main') ? 'block' : 'none';
+  if (panelExtra) panelExtra.style.display = (tab === 'extra') ? 'block' : 'none';
+  if (panelPenalty) panelPenalty.style.display = (tab === 'penalty') ? 'block' : 'none';
+
+  if (tab === 'main') generateInvestigationReport();
+  else if (tab === 'extra') generateExtraWriteup();
+  else if (tab === 'penalty') runPenaltyDefenseCheck();
+}
+
 function generateInvestigationReport() {
-  const teamName = (document.getElementById('report-team-name')?.value || '').trim() || '수사팀 (팀명 미기재)';
-  const members = (document.getElementById('report-team-members')?.value || '').trim() || '팀원 3인';
-  const conclusion = (document.getElementById('report-conclusion')?.value || '').trim() || '(사건 전말 및 최종 스토리 종합 추리를 여기에 작성해주세요)';
+  const teamName = (document.getElementById('report-team-name')?.value || '').trim() || '시립수사대';
+  const members = (document.getElementById('report-team-members')?.value || '').trim() || '김철수, 이영희, 박민수';
+  const category = document.getElementById('report-team-category')?.value || '시립대부';
+  const conclusion = (document.getElementById('report-conclusion')?.value || '').trim() || 
+    '(사건 전말, 범인, 범행 동기, 알리바이 모순, 탈출 경로 등 종합 추리 내용을 작성해주세요. [AI 자동 작성] 버튼 이용 가능)';
   
-  const now = new Date().toLocaleString();
-  const solvedClues = cluesData.filter(c => c.status === 'solved');
-  const inProgressClues = cluesData.filter(c => c.status === 'inprogress');
-  const todoClues = cluesData.filter(c => c.status === 'todo');
+  // Update team display tags across modal
+  document.querySelectorAll('.report-team-title-disp').forEach(el => el.textContent = teamName);
 
-  const scenarioClues = cluesData.filter(c => c.category === 'scenario');
-  const jeopardyClues = cluesData.filter(c => c.category !== 'scenario');
+  const now = new Date().toLocaleString('ko-KR');
+  const scenarioClues = cluesData.filter(c => c.category === 'scenario' || c.isEscapeRoomTag);
+  const solvedCount = cluesData.filter(c => c.status === 'solved').length;
 
-  // Assembled Flag
-  const parts = cluesData
-    .filter(c => c.flagPart && c.flagPart.trim().length > 0)
-    .map(c => c.flagPart.trim());
-  const masterFlag = parts.join('');
+  // Compute Perfect Clear conditions
+  const allFlags = crimeScenesData.every(s => s.flag && s.flag.trim().length > 0);
+  const noHint = crimeScenesData.every(s => !s.hintUsed);
+  const oneEntry = crimeScenesData.every(s => s.entries <= 1);
+  const isPerfectClear = allFlags && noHint && oneEntry;
 
-  let report = `# 📑 [최종 수사 보고서] - ${teamName}
-* 작성 일시: ${now}
-* 참가 팀: ${teamName} (참가자: ${members})
-* 대회: "주말에 뭐 하세요? 바쁘세요? 해결 가능하신가요?" 방탈출 CTF
-* 근거: 운영규정 제3조 제1항 (보너스 점수 심사용)
+  let report = `# 📑 [수사보고서] - ${teamName}
 
----
-
-## 1. 수사 총괄 현황
-* 전체 단서/문제: 총 ${cluesData.length}건
-  - 해결 완료: ${solvedClues.length}건
-  - 분석 중: ${inProgressClues.length}건
-  - 미해결: ${todoClues.length}건
-* 최종 완성 마스터 플래그: ${masterFlag ? `\`${masterFlag}\`` : '(미완성)'}
+| 항목 | 상세 정보 |
+| :--- | :--- |
+| **대회명** | 방탈출 × CTF 보안 축제 "주말에 뭐 하세요? 바쁘세요? 해결 가능하신가요?" |
+| **주최/주관** | 서울시립대학교 컴퓨터과학부 보안소학회 SHA × 수학과 암호동아리 도어락 |
+| **참가 팀명** | **${teamName}** |
+| **참가 부문** | ${category} |
+| **팀원 명단 (3인)** | ${members} |
+| **작성 일시** | ${now} |
+| **제출 마감** | 2026년 9월 19일 17:30:00 마감 엄수 (제8조 규정) |
+| **제출 대상** | roomescapectf2026@gmail.com |
+| **제출 파일명** | \`${teamName}_수사보고서.pdf\` |
 
 ---
 
-## 2. 메인 시나리오 (방탈출 연계) 진행 타임라인
-(앞선 문제 해결에 따른 다음 문제/공간/장치 개방 연계 내역 - 제2조 제2항)
-`;
+## 1. 추론 내용 (사건 전말 및 종합 추리)
+> **[운영규정 제8조 필수]** 현장의 단서들을 종합하여 밝혀낸 범인, 범행 동기, 알리바이 모순, 최종 탈출 경로:
 
-  if (scenarioClues.length === 0) {
-    report += `* 등록된 메인 시나리오 단서가 없습니다.\n`;
-  } else {
-    scenarioClues.forEach((c, idx) => {
-      report += `\n### [단계 ${idx + 1}] ${c.title} (${c.status === 'solved' ? '✅ 해결 완료' : '⏳ 진행 중'})
-- 발견 위치: ${c.location || '위치 미기재'} (담당: ${c.assignee || '미지정'})
-- 원본 단서/암호 내용: ${c.content || '내용 없음'}
-- 해독 결과/패스코드: ${c.solution || '미해독'}
-- 획득 조각 플래그: ${c.flagPart || '없음'}
-- 다음 개방 장치/공간: ${c.unlocks || '없음'}
-${c.hintUsed ? '- ⚠️ 공식 힌트 사용 여부: 사용함 (감점 반영)' : '- 힌트 사용 여부: 미사용 (노힌트 순수 해결)'}
-`;
-    });
-  }
-
-  report += `\n---\n\n## 3. 독립 Jeopardy 문제 해결 내역
-(시나리오와 독립적인 일반 CTF 문제 풀이 내역 - 제2조 제1항)
-`;
-
-  if (jeopardyClues.length === 0) {
-    report += `* 등록된 독립 Jeopardy 문제가 없습니다.\n`;
-  } else {
-    jeopardyClues.forEach((c, idx) => {
-      report += `\n- **[${c.category.toUpperCase()}] ${c.title}** (${c.status === 'solved' ? '✅ 해결' : '⏳ 미해결'})
-  • 발견 위치: ${c.location || '미기재'}
-  • 해독 결과/플래그: ${c.solution || c.flagPart || '미해독'}
-  • 힌트 사용: ${c.hintUsed ? '⚠️ 사용함' : '미사용'}
-`;
-    });
-  }
-
-  report += `\n---\n\n## 4. 사건의 전말 및 최종 추리 결론
 ${conclusion}
 
 ---
-* 보고자: ${teamName} (${members})
-* 본 보고서는 대회 운영규정 제3조 1항에 따른 보너스 점수 심사용으로 공식 제출합니다.
+
+## 2. 관련 단서 및 출처 (제8조 필수 3대 구성요소 완벽 증명)
+> **출처(방 이름, 문서/물품/화면 이름, 구체적 발견 위치)** 및 **추론을 뒷받침하는 단서 1:1 매핑**:
+
+| 번호 | 단서 / 물품·화면명 | 출처 (방 이름 & 발견 위치) | 획득 플래그 / 패스코드 | 추론 연계 내용 (입증 사실) | 힌트 여부 |
+| :---: | :--- | :--- | :--- | :--- | :---: |
+`;
+
+  if (scenarioClues.length === 0) {
+    report += `| - | (등록된 단서가 없습니다) | - | - | - | - |\n`;
+  } else {
+    scenarioClues.forEach((c, idx) => {
+      const roomStr = c.room || '방 미기재';
+      const locStr = c.location || '위치 미기재';
+      const flagStr = c.flagPart || c.solution || '-';
+      const inferStr = c.inference || c.content || '추론 미기재';
+      const hintStr = c.hintUsed ? '⚠️사용' : '노힌트';
+      report += `| #${idx + 1} | **${c.title}** | ${roomStr} (${locStr}) | \`${flagStr}\` | ${inferStr} | ${hintStr} |\n`;
+    });
+  }
+
+  report += `\n### 📌 단서별 상세 출처 및 증거 설명\n`;
+  scenarioClues.forEach((c, idx) => {
+    report += `\n#### 단서 #${idx + 1}: ${c.title}
+* **출처 방 이름**: ${c.room || '방 이름 미기재'}
+* **구체적 발견 위치**: ${c.location || '발견 위치 미기재'}
+* **발견 물품/문서/화면**: ${c.title}
+* **담당 수사관**: ${c.assignee || '미지정'}
+* **단서 원본 내용/문자열**:
+\`\`\`
+${c.content || '(내용 없음)'}
+\`\`\`
+* **해독 결과 및 패스코드**: \`${c.solution || '미해독'}\`
+* **획득 플래그**: \`${c.flagPart || '없음'}\`
+* **추론 연계 가치 (사건 입증 내용)**: ${c.inference || '(추론 내용 미기재 - 감점 방지를 위해 작성 필요)'}
+* **방탈출 태그 힌트 사용 여부**: ${c.hintUsed ? '⚠️ 공식 힌트 사용함 (감점/퍼펙트 제외)' : '✅ 노힌트 해결 (퍼펙트 클리어 요건 유지)'}
+`;
+  });
+
+  report += `
+---
+
+## 3. 5대 수사 현장 해결 현황 & 퍼펙트 클리어 진단
+* **5대 수사 현장 기본 점수**: 총 ${crimeScenesData.filter(s => s.flag).length * 200}점 / 1,000점 만점
+* **퍼펙트 클리어 3대 조건 판정**:
+  1. 각 수사 현장 플래그 모두 제출: ${allFlags ? '✅ 전원 달성 (5/5)' : `⏳ 진행 중 (${crimeScenesData.filter(s => s.flag).length}/5)`}
+  2. '방탈출' 태그 문제 힌트 없이 해결: ${noHint ? '✅ 전원 노힌트 준수' : '❌ 힌트 사용 현장 존재'}
+  3. 각 수사 현장에 **단 1회만 입장**: ${oneEntry ? '✅ 전 현장 1회 입장 원칙 준수' : '❌ 재입장 발생으로 실격'}
+* **최종 퍼펙트 클리어 판정**: **${isPerfectClear ? '🏆 퍼펙트 클리어 요건 100% 충족 (+200~500점 다이나믹 보너스 대상)' : '⚠️ 일반 클리어 적용 (퍼펙트 조건 미충족)'}**
+
+| 현장 번호 | 수사 장소(건물/방) | 입장 횟수 (1회 원칙) | 힌트 미사용 여부 | 수사 현장 플래그 (SHA{...}) | 상태 |
+| :---: | :--- | :---: | :---: | :--- | :---: |
+`;
+
+  crimeScenesData.forEach((s, idx) => {
+    const entryCheck = s.entries === 1 ? '1회 (준수)' : `⚠️ ${s.entries}회 (재입장)`;
+    const hintCheck = s.hintUsed ? '⚠️ 사용' : '✅ 노힌트';
+    const flagVal = s.flag ? `\`${s.flag}\`` : '(미획득)';
+    report += `| 현장 ${idx + 1} | ${s.room || s.name} | ${entryCheck} | ${hintCheck} | ${flagVal} | ${s.flag ? '✅ 완료' : '⏳ 진행중'} |\n`;
+  });
+
+  report += `
+---
+
+## 4. 최종 결론 및 서약
+본 수사보고서는 서울시립대학교 SHA × 도어락 방탈출 × CTF 보안 축제 운영규정 제8조에 의거하여 팀원 3인의 독립적 수색과 단서 수집, 논리적 추론을 바탕으로 작성되었습니다.
+제시된 모든 단서와 출처, 추론 내용은 사실과 일치함을 서약하며, 제8조에 따른 수사보고서 심사(배점 3,000점)를 정식 요청합니다.
+
+* **보고자**: ${teamName} (${members})
+* **제출 기한**: 2026-09-19 17:30:00 (마감 준수)
 `;
 
   const previewEl = document.getElementById('report-preview-text');
   if (previewEl) previewEl.value = report;
 }
 
+function generateExtraWriteup() {
+  const teamName = (document.getElementById('report-team-name')?.value || '').trim() || '시립수사대';
+  const members = (document.getElementById('report-team-members')?.value || '').trim() || '김철수, 이영희, 박민수';
+  const now = new Date().toLocaleString('ko-KR');
+
+  const extraClues = cluesData.filter(c => c.category !== 'scenario' && !c.isEscapeRoomTag);
+
+  let writeup = `# 🎯 [추가 의뢰 라이트업] - ${teamName}
+
+| 항목 | 내용 |
+| :--- | :--- |
+| **대회명** | 서울시립대학교 방탈출 × CTF 보안 축제 (추가 의뢰 풀이) |
+| **팀명** | **${teamName}** |
+| **팀원** | ${members} |
+| **작성 일시** | ${now} |
+| **제출 파일명** | \`${teamName}_라이트업.pdf\` (자유 양식) |
+| **제출처** | roomescapectf2026@gmail.com |
+
+---
+
+## 1. 추가 의뢰 (독립 Jeopardy / CTF) 풀이 개요
+본 문서는 시나리오 연계 문제 외에 CTF 플랫폼에 출제된 독립 추가 의뢰 문제들의 풀이 과정, 취약점 분석, 익스플로잇 스크립트 및 획득 플래그를 정돈한 공식 라이트업입니다.
+
+* **총 해결 문제 수**: ${extraClues.filter(c => c.status === 'solved').length}건
+`;
+
+  if (extraClues.length === 0) {
+    writeup += `\n* 현재 등록된 추가 의뢰(Jeopardy) 단서가 없습니다. 단서 추가 시 카테고리를 '추가 의뢰(Jeopardy)'로 설정하세요.\n`;
+  } else {
+    extraClues.forEach((c, idx) => {
+      writeup += `\n---\n\n### [문제 ${idx + 1}] [${c.category.toUpperCase()}] ${c.title} (${c.status === 'solved' ? '✅ 해결 완료' : '⏳ 진행 중'})
+* **출처/플랫폼**: ${c.room || c.location || '온라인 CTF 플랫폼'}
+* **담당자**: ${c.assignee || '미지정'}
+* **획득 플래그**: \`${c.flagPart || c.solution || '미획득'}\`
+
+#### 1) 문제 분석 & 취약점
+${c.content || '문제 원본 설명 및 분석 내용이 여기에 들어갑니다.'}
+
+#### 2) 풀이 과정 & 익스플로잇
+${c.inference || c.solution || '암호 해독 방식, 페이로드 전송 과정, 수학적 역산 과정 서술'}
+
+#### 3) 증적 (플래그 및 실행 화면)
+\`\`\`
+${c.flagPart || 'SHA{example_flag_here}'}
+\`\`\`
+`;
+    });
+  }
+
+  writeup += `\n---\n* **작성자**: ${teamName} (${members})\n`;
+
+  const previewEl = document.getElementById('writeup-preview-text');
+  if (previewEl) previewEl.value = writeup;
+}
+
+function runPenaltyDefenseCheck() {
+  const output = document.getElementById('penalty-defense-output');
+  if (!output) return;
+
+  const teamName = (document.getElementById('report-team-name')?.value || '').trim();
+  const conclusion = (document.getElementById('report-conclusion')?.value || '').trim();
+
+  let warnings = [];
+  let passes = [];
+
+  // Check 1: Team name
+  if (!teamName) {
+    warnings.push('팀명이 입력되지 않았습니다. 메일 제목 및 파일명에 필수입니다.');
+  } else {
+    passes.push(`팀명 확인 완료: "${teamName}"`);
+  }
+
+  // Check 2: Inference / conclusion
+  if (!conclusion || conclusion.length < 40) {
+    warnings.push('추론 내용(사건 전말 종합 추리)이 너무 짧거나 비어있습니다. (최소 40자 이상 권장)');
+  } else {
+    passes.push(`추론 내용 검토 완료 (${conclusion.length}자)`);
+  }
+
+  // Check 3: Sources in clues (Article 8 deduction: 출처 누락 시 감점)
+  const missingSources = cluesData.filter(c => !c.room || !c.location);
+  if (missingSources.length > 0) {
+    warnings.push(`<b>[★ 중요 감점 위험]</b> 출처(방 이름 또는 위치)가 누락된 단서가 ${missingSources.length}건 있습니다: ${missingSources.map(c => `"${c.title}"`).join(', ')}`);
+  } else if (cluesData.length > 0) {
+    passes.push(`모든 단서(${cluesData.length}건)의 출처(방 이름, 위치) 기재 확인 완료`);
+  }
+
+  // Check 4: Clue inference mapping (제8조: 추론을 뒷받침하는 단서)
+  const missingInference = cluesData.filter(c => !c.inference);
+  if (missingInference.length > 0) {
+    warnings.push(`단서의 '추론 연계 내용'이 미작성된 항목이 ${missingInference.length}건 있습니다: ${missingInference.map(c => `"${c.title}"`).join(', ')}`);
+  } else if (cluesData.length > 0) {
+    passes.push(`모든 단서의 추론 연계 증거 기재 확인 완료`);
+  }
+
+  // Check 5: Perfect clear status
+  const reEnteredScenes = crimeScenesData.filter(s => s.entries > 1);
+  if (reEnteredScenes.length > 0) {
+    warnings.push(`<b>[퍼펙트 클리어 실격]</b> ${reEnteredScenes.map(s => s.name).join(', ')}에서 1회 초과 입장(재입장)이 발생하여 퍼펙트 클리어(+200~500점)가 무효화되었습니다.`);
+  } else {
+    passes.push(`5대 현장 모두 1회 입장 원칙 준수 확인`);
+  }
+
+  const hintsUsedScenes = crimeScenesData.filter(s => s.hintUsed);
+  if (hintsUsedScenes.length > 0) {
+    warnings.push(`<b>[퍼펙트 클리어 실격]</b> ${hintsUsedScenes.map(s => s.name).join(', ')}에서 힌트 사용이 체크되었습니다.`);
+  } else {
+    passes.push(`모든 수사 현장 힌트 미사용(노힌트) 상태 확인`);
+  }
+
+  if (warnings.length === 0) {
+    output.className = 'penalty-alert-box pass';
+    output.innerHTML = `
+      <div style="font-size:13px; font-weight:700; margin-bottom:6px;">✅ [검사 통과] 제8조 감점 위험 요소 0건! 3,000점 만점 요건 완벽 충족</div>
+      <ul style="margin:0; padding-left:18px; font-size:11px; line-height:1.6;">
+        ${passes.map(p => `<li>${p}</li>`).join('')}
+      </ul>
+      <div style="margin-top:8px; font-weight:600; color:#4ADE80;">이대로 PDF로 내보내어 roomescapectf2026@gmail.com 으로 제출하시면 됩니다!</div>
+    `;
+  } else {
+    output.className = 'penalty-alert-box';
+    output.innerHTML = `
+      <div style="font-size:13px; font-weight:700; margin-bottom:6px; color:#F87171;">⚠️ [감점 위험 감지] 총 ${warnings.length}건의 감점 및 규정 위반 주의사항이 있습니다:</div>
+      <ul style="margin:0; padding-left:18px; font-size:11px; line-height:1.6; color:#FECACA;">
+        ${warnings.map(w => `<li>${w}</li>`).join('')}
+      </ul>
+      <div style="margin-top:8px; font-size:11px; color:var(--text-muted);">
+        <b>정상 통과 항목 (${passes.length}건):</b> ${passes.join(' · ')}
+      </div>
+    `;
+  }
+}
+
+function copyActiveReportText() {
+  let text = '';
+  if (currentReportTab === 'main') {
+    text = document.getElementById('report-preview-text')?.value || '';
+  } else if (currentReportTab === 'extra') {
+    text = document.getElementById('writeup-preview-text')?.value || '';
+  } else {
+    runPenaltyDefenseCheck();
+    text = document.getElementById('penalty-defense-output')?.innerText || '';
+  }
+  if (!text) return;
+  copyToClipboard(text);
+}
+
 function downloadReportTxt() {
-  const previewEl = document.getElementById('report-preview-text');
-  const text = previewEl ? previewEl.value : '';
+  const teamName = (document.getElementById('report-team-name')?.value || '').trim() || '시립수사대';
+  let text = '';
+  let filename = '';
+
+  if (currentReportTab === 'extra') {
+    text = document.getElementById('writeup-preview-text')?.value || '';
+    filename = `${teamName}_라이트업.md`;
+  } else {
+    text = document.getElementById('report-preview-text')?.value || '';
+    filename = `${teamName}_수사보고서.md`;
+  }
+
   if (!text) return;
   const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `최종수사보고서_${new Date().toISOString().slice(0,10)}.md`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
-  showToast('최종 수사 보고서가 마크다운 파일로 저장되었습니다! 💾', 'success');
+  showToast(`${filename} 파일이 저장되었습니다! 💾`, 'success');
+}
+
+function printReportHtml() {
+  const teamName = (document.getElementById('report-team-name')?.value || '').trim() || '시립수사대';
+  const isExtra = currentReportTab === 'extra';
+  const raw = isExtra ? 
+    (document.getElementById('writeup-preview-text')?.value || '') : 
+    (document.getElementById('report-preview-text')?.value || '');
+
+  if (!raw) return;
+
+  const htmlContent = parseMarkdownToHtml(raw);
+  const printWin = window.open('', '_blank', 'width=840,height=900');
+  if (!printWin) {
+    showToast('팝업 차단을 해제해주세요.', 'error');
+    return;
+  }
+
+  printWin.document.write(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+      <meta charset="UTF-8">
+      <title>${escapeHtml(teamName)}_${isExtra ? '라이트업' : '수사보고서'}</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", Dotum, sans-serif; padding: 24px; color: #111827; line-height: 1.6; }
+        h1, h2, h3, h4 { color: #0F172A; border-bottom: 1px solid #E2E8F0; padding-bottom: 4px; }
+        h1 { font-size: 22px; }
+        h2 { font-size: 17px; margin-top: 20px; }
+        h3 { font-size: 14px; margin-top: 14px; }
+        table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+        th, td { border: 1px solid #CBD5E1; padding: 6px 10px; text-align: left; }
+        th { background: #F1F5F9; font-weight: 700; }
+        code { background: #F1F5F9; padding: 2px 4px; border-radius: 4px; font-family: Consolas, monospace; font-size: 11px; }
+        pre { background: #F8FAFC; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; overflow-x: auto; font-family: Consolas, monospace; font-size: 11px; }
+        blockquote { border-left: 3px solid #3B82F6; padding-left: 10px; margin: 8px 0; color: #475569; background: #F8FAFC; padding: 6px 10px; }
+        @media print {
+          body { padding: 0; font-size: 11pt; }
+          button { display: none; }
+        }
+      </style>
+    </head>
+    <body>
+      <div style="text-align: right; margin-bottom: 10px;">
+        <button onclick="window.print()" style="padding: 6px 14px; background: #2563EB; color: #FFF; border: none; border-radius: 4px; cursor: pointer; font-weight: 700;">인쇄 / PDF로 저장하기 (Ctrl+P)</button>
+      </div>
+      ${htmlContent}
+    </body>
+    </html>
+  `);
+  printWin.document.close();
 }
 
 function openAboutModal() {
@@ -759,7 +1031,7 @@ function createClueCardElement(clue) {
 
   const categoryMap = {
     scenario: { label: '🚪 메인시나리오', cls: 'tag-physical' },
-    jeopardy: { label: '🎯 Jeopardy', cls: 'tag-crypto' },
+    jeopardy: { label: '🎯 추가의뢰', cls: 'tag-crypto' },
     crypto: { label: '🔐 암호학', cls: 'tag-crypto' },
     stego: { label: '🖼️ 스테고', cls: 'tag-stego' },
     forensics: { label: '🔍 포렌식', cls: 'tag-forensics' },
@@ -767,17 +1039,23 @@ function createClueCardElement(clue) {
     misc: { label: '📌 기타단서', cls: 'tag-misc' }
   };
   const cat = categoryMap[clue.category] || categoryMap.misc;
+  const roomInfo = clue.room ? `${escapeHtml(clue.room)} · ` : '';
+  const locInfo = clue.location ? escapeHtml(clue.location) : '위치 미기재';
 
   card.innerHTML = `
     <div class="clue-card-header">
       <span class="clue-name">${escapeHtml(clue.title)}</span>
-      <span class="clue-tag ${cat.cls}">${cat.label}</span>
+      <div style="display:flex; gap:4px;">
+        ${clue.isEscapeRoomTag ? '<span class="clue-tag" style="background:rgba(56,189,248,0.2); color:var(--accent-cyan);">🏷️방탈출</span>' : ''}
+        <span class="clue-tag ${cat.cls}">${cat.label}</span>
+      </div>
     </div>
-    <div class="clue-location">📍 ${escapeHtml(clue.location || '위치 미기재')} · 👤 ${escapeHtml(clue.assignee || '미지정')} ${clue.hintUsed ? '· <span style="color:var(--accent-red); font-weight:700;">⚠️힌트사용</span>' : ''}</div>
+    <div class="clue-location">📍 <b>${roomInfo}</b>${locInfo} · 👤 ${escapeHtml(clue.assignee || '미지정')} ${clue.hintUsed ? '· <span style="color:var(--accent-red); font-weight:700;">⚠️힌트사용</span>' : ''}</div>
     ${clue.content ? `<div class="clue-snippet" title="${escapeHtml(clue.content)}">${escapeHtml(clue.content)}</div>` : ''}
-    ${clue.solution ? `<div style="font-size:12px; color:var(--accent-green); margin-bottom:4px;"><b>해독값:</b> ${escapeHtml(clue.solution)}</div>` : ''}
+    ${clue.inference ? `<div style="font-size:11px; color:var(--accent-purple); margin-bottom:4px; line-height:1.4;"><b>💡 추론:</b> ${escapeHtml(clue.inference)}</div>` : ''}
+    ${clue.solution ? `<div style="font-size:12px; color:var(--accent-green); margin-bottom:4px;"><b>정답/패스코드:</b> ${escapeHtml(clue.solution)}</div>` : ''}
     ${clue.unlocks ? `<div style="font-size:11px; color:var(--accent-amber); margin-bottom:4px;"><b>🔓 개방장치:</b> ${escapeHtml(clue.unlocks)}</div>` : ''}
-    ${clue.flagPart ? `<div style="font-size:11px; color:var(--accent-cyan); font-family:var(--font-mono); margin-bottom:6px;">🧩 조각: ${escapeHtml(clue.flagPart)}</div>` : ''}
+    ${clue.flagPart ? `<div style="font-size:11px; color:var(--accent-cyan); font-family:var(--font-mono); margin-bottom:6px;">🚩 플래그: ${escapeHtml(clue.flagPart)}</div>` : ''}
     <div class="clue-footer">
       <span>${clue.timestamp || ''}</span>
       <div style="display:flex; gap:6px;">
@@ -814,12 +1092,16 @@ function openClueModal(clueId = null) {
       document.getElementById('modal-clue-id').value = clue.id;
       document.getElementById('input-clue-title').value = clue.title || '';
       document.getElementById('select-clue-category').value = clue.category || 'scenario';
+      document.getElementById('select-clue-scene').value = clue.scene || 'scene1';
+      document.getElementById('input-clue-room').value = clue.room || '';
       document.getElementById('input-clue-location').value = clue.location || '';
       document.getElementById('input-clue-assignee').value = clue.assignee || '';
       document.getElementById('select-clue-status').value = clue.status || 'todo';
       document.getElementById('input-clue-unlocks').value = clue.unlocks || '';
+      document.getElementById('chk-clue-tag-escaperoom').checked = clue.isEscapeRoomTag !== false;
       document.getElementById('chk-clue-hint').checked = !!clue.hintUsed;
       document.getElementById('textarea-clue-content').value = clue.content || '';
+      document.getElementById('textarea-clue-inference').value = clue.inference || '';
       document.getElementById('input-clue-solution').value = clue.solution || '';
       document.getElementById('input-clue-flagpart').value = clue.flagPart || '';
       document.getElementById('btn-delete-clue').style.display = 'inline-flex';
@@ -827,6 +1109,7 @@ function openClueModal(clueId = null) {
   } else {
     document.getElementById('modal-clue-id').value = '';
     document.getElementById('input-clue-unlocks').value = '';
+    document.getElementById('chk-clue-tag-escaperoom').checked = true;
     document.getElementById('chk-clue-hint').checked = false;
     document.getElementById('btn-delete-clue').style.display = 'none';
   }
@@ -852,12 +1135,16 @@ function handleClueFormSubmit(e) {
     id: id || 'clue_' + Date.now(),
     title: title,
     category: document.getElementById('select-clue-category').value,
+    scene: document.getElementById('select-clue-scene').value,
+    room: document.getElementById('input-clue-room').value.trim(),
     location: document.getElementById('input-clue-location').value.trim(),
     assignee: document.getElementById('input-clue-assignee').value.trim(),
     status: document.getElementById('select-clue-status').value,
     unlocks: document.getElementById('input-clue-unlocks').value.trim(),
+    isEscapeRoomTag: document.getElementById('chk-clue-tag-escaperoom').checked,
     hintUsed: document.getElementById('chk-clue-hint').checked,
     content: document.getElementById('textarea-clue-content').value.trim(),
+    inference: document.getElementById('textarea-clue-inference').value.trim(),
     solution: document.getElementById('input-clue-solution').value.trim(),
     flagPart: document.getElementById('input-clue-flagpart').value.trim(),
     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -899,10 +1186,9 @@ function updateFlagAssembler() {
   if (!container) return;
 
   if (parts.length === 0) {
-    container.textContent = '아직 수집된 플래그 조각이 없습니다. (단서 카드의 [조각 플래그]란에 입력하면 결합됩니다)';
+    container.textContent = '아직 수집된 플래그 조각이 없습니다. (단서 카드의 [획득 플래그]란에 입력하면 결합됩니다)';
     container.style.color = 'var(--text-dim)';
   } else {
-    // Check if any starts with flag{ or ctf{
     let combined = parts.join('');
     container.textContent = combined;
     container.style.color = 'var(--accent-cyan)';
@@ -910,14 +1196,20 @@ function updateFlagAssembler() {
 }
 
 function exportCluesJSON() {
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cluesData, null, 2));
+  const payload = {
+    version: '3.0',
+    clues: cluesData,
+    crimeScenes: crimeScenesData,
+    exportDate: new Date().toISOString()
+  };
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
   const downloadAnchor = document.createElement('a');
   downloadAnchor.setAttribute("href", dataStr);
-  downloadAnchor.setAttribute("download", `ctf_clues_${new Date().toISOString().slice(0,10)}.json`);
+  downloadAnchor.setAttribute("download", `sha_ctf_investigation_${new Date().toISOString().slice(0,10)}.json`);
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
   downloadAnchor.remove();
-  showToast('수사 보드가 JSON 파일로 저장되었습니다! (USB 공유 가능) 💾', 'success');
+  showToast('수사 보드와 5대 현장 데이터가 JSON으로 백업되었습니다! 💾', 'success');
 }
 
 function importCluesJSON(e) {
@@ -929,12 +1221,20 @@ function importCluesJSON(e) {
       const imported = JSON.parse(event.target.result);
       if (Array.isArray(imported)) {
         cluesData = imported;
-        saveCluesToStorage();
-        renderClues();
-        showToast(`성공적으로 ${imported.length}개의 단서를 불러왔습니다! 🚀`, 'success');
+      } else if (imported && Array.isArray(imported.clues)) {
+        cluesData = imported.clues;
+        if (Array.isArray(imported.crimeScenes)) {
+          crimeScenesData = imported.crimeScenes;
+          saveCrimeScenesToStorage();
+          renderCrimeScenes();
+        }
       } else {
         showToast('올바르지 않은 JSON 포맷입니다.', 'error');
+        return;
       }
+      saveCluesToStorage();
+      renderClues();
+      showToast(`성공적으로 데이터를 불러왔습니다! 🚀`, 'success');
     } catch (err) {
       showToast('JSON 파일을 읽는 중 오류가 발생했습니다.', 'error');
     }
@@ -942,71 +1242,441 @@ function importCluesJSON(e) {
   reader.readAsText(file);
 }
 
+// ==========================================================================
+// 5대 수사 현장(Crime Scenes) & 퍼펙트 클리어(Perfect Clear) 관리 엔진
+// ==========================================================================
+let crimeScenesData = [
+  { id: 'scene1', name: '현장 1', room: '인문학관', entries: 1, hintUsed: false, flag: '', status: 'todo' },
+  { id: 'scene2', name: '현장 2', room: '자연과학관', entries: 1, hintUsed: false, flag: '', status: 'todo' },
+  { id: 'scene3', name: '현장 3', room: '21세기관', entries: 1, hintUsed: false, flag: '', status: 'todo' },
+  { id: 'scene4', name: '현장 4', room: '배봉관', entries: 1, hintUsed: false, flag: '', status: 'todo' },
+  { id: 'scene5', name: '현장 5', room: '학생회관', entries: 1, hintUsed: false, flag: '', status: 'todo' }
+];
+
+function initCrimeScenes() {
+  loadCrimeScenesFromStorage();
+  renderCrimeScenes();
+  updatePerfectClearStatus();
+  updateSceneTimerDisplay();
+}
+
+function loadCrimeScenesFromStorage() {
+  try {
+    const saved = localStorage.getItem('sha_crime_scenes');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length === 5) crimeScenesData = parsed;
+    }
+  } catch (e) {}
+}
+
+function saveCrimeScenesToStorage() {
+  try {
+    localStorage.setItem('sha_crime_scenes', JSON.stringify(crimeScenesData));
+  } catch (e) {}
+}
+
+function renderCrimeScenes() {
+  const container = document.getElementById('crime-scene-cards-grid');
+  if (!container) return;
+
+  container.innerHTML = '';
+  crimeScenesData.forEach((scene, idx) => {
+    const card = document.createElement('div');
+    const isSolved = scene.flag && scene.flag.trim().length > 0;
+    const isDisqualified = scene.entries > 1 || scene.hintUsed;
+    
+    card.className = `scene-card ${isSolved ? 'solved' : ''} ${isDisqualified ? 'disqualified' : ''}`;
+
+    card.innerHTML = `
+      <div class="scene-card-top">
+        <span class="scene-badge-num">🏢 ${scene.name}</span>
+        <span class="scene-status-pill ${isSolved ? 'status-done' : (scene.entries > 0 ? 'status-active' : 'status-todo')}">
+          ${isSolved ? '✅ 해결 완료 (+200점)' : (scene.entries > 0 ? '🔍 수사 진행' : '대기')}
+        </span>
+      </div>
+
+      <div class="scene-input-row">
+        <input type="text" class="text-input" style="font-size:11px; padding:3px 6px;" value="${escapeHtml(scene.room)}" 
+          placeholder="건물/방 이름" onchange="updateSceneRoom(${idx}, this.value)">
+      </div>
+
+      <div class="scene-entry-counter">
+        <span>입장 횟수: <b>${scene.entries}회</b></span>
+        <div style="display:flex; gap:3px;">
+          <button type="button" class="btn btn-secondary btn-xs" onclick="setSceneEntries(${idx}, -1)" title="입장 횟수 감소">-</button>
+          <button type="button" class="btn btn-cyan btn-xs" onclick="setSceneEntries(${idx}, 1)" title="입장 횟수 추가 (재입장 시 퍼펙트 실격)">+1 입장</button>
+        </div>
+      </div>
+      ${scene.entries > 1 ? '<div style="font-size:10px; color:#F87171; font-weight:700;">⚠️ 1회 초과 입장 (퍼펙트 실격)</div>' : ''}
+
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+          <input type="checkbox" ${scene.hintUsed ? 'checked' : ''} onchange="toggleSceneHint(${idx})">
+          <span style="${scene.hintUsed ? 'color:#F87171; font-weight:700;' : 'color:var(--fg-secondary);'}">힌트 사용함</span>
+        </label>
+        ${scene.hintUsed ? '<span style="font-size:10px; color:#F87171;">퍼펙트 제외</span>' : '<span style="font-size:10px; color:#4ADE80;">노힌트 유지</span>'}
+      </div>
+
+      <div class="scene-input-row" style="margin-top:2px;">
+        <input type="text" class="scene-flag-input" value="${escapeHtml(scene.flag || '')}" 
+          placeholder="현장 플래그 (SHA{...})" onchange="updateSceneFlag(${idx}, this.value)">
+      </div>
+    `;
+    container.appendChild(card);
+  });
+
+  updatePerfectClearStatus();
+}
+
+function updateSceneRoom(idx, val) {
+  if (crimeScenesData[idx]) {
+    crimeScenesData[idx].room = val.trim();
+    saveCrimeScenesToStorage();
+  }
+}
+
+function setSceneEntries(idx, delta) {
+  if (crimeScenesData[idx]) {
+    crimeScenesData[idx].entries = Math.max(0, (crimeScenesData[idx].entries || 0) + delta);
+    saveCrimeScenesToStorage();
+    renderCrimeScenes();
+    if (crimeScenesData[idx].entries > 1) {
+      showToast(`${crimeScenesData[idx].name} 재입장 기록됨: 퍼펙트 클리어 요건이 상실되었습니다.`, 'error');
+    }
+  }
+}
+
+function toggleSceneHint(idx) {
+  if (crimeScenesData[idx]) {
+    crimeScenesData[idx].hintUsed = !crimeScenesData[idx].hintUsed;
+    saveCrimeScenesToStorage();
+    renderCrimeScenes();
+    if (crimeScenesData[idx].hintUsed) {
+      showToast(`${crimeScenesData[idx].name} 힌트 사용됨: 퍼펙트 클리어 요건이 상실되었습니다.`, 'error');
+    }
+  }
+}
+
+function updateSceneFlag(idx, val) {
+  if (crimeScenesData[idx]) {
+    crimeScenesData[idx].flag = val.trim();
+    if (crimeScenesData[idx].flag && crimeScenesData[idx].status !== 'solved') {
+      crimeScenesData[idx].status = 'solved';
+      showToast(`🎉 ${crimeScenesData[idx].name} 플래그 확보 완료! (+200점)`, 'success');
+    }
+    saveCrimeScenesToStorage();
+    renderCrimeScenes();
+  }
+}
+
+function updatePerfectClearStatus() {
+  const badge = document.getElementById('perfect-clear-badge');
+  const condFlags = document.getElementById('cond-flags');
+  const condNohint = document.getElementById('cond-nohint');
+  const condOneEntry = document.getElementById('cond-oneentry');
+
+  const solvedCount = crimeScenesData.filter(s => s.flag && s.flag.trim().length > 0).length;
+  const noHintCount = crimeScenesData.filter(s => !s.hintUsed).length;
+  const oneEntryCount = crimeScenesData.filter(s => s.entries <= 1).length;
+
+  if (condFlags) condFlags.textContent = `🚩 현장 플래그: (${solvedCount}/5)`;
+  if (condNohint) condNohint.textContent = `💡 노힌트 준수: (${noHintCount}/5)`;
+  if (condOneEntry) condOneEntry.textContent = `🚪 1회 입장 준수: (${oneEntryCount}/5)`;
+
+  if (!badge) return;
+
+  if (noHintCount < 5 || oneEntryCount < 5) {
+    badge.className = 'risk-badge badge-danger';
+    badge.textContent = '퍼펙트 실격 (재입장/힌트 사용)';
+  } else if (solvedCount === 5) {
+    badge.className = 'risk-badge badge-safe';
+    badge.textContent = '🏆 퍼펙트 클리어 달성! (+200~500점 보너스)';
+  } else {
+    badge.className = 'risk-badge badge-warning';
+    badge.textContent = `진행 중 (${solvedCount}/5개 해결, 조건 유지 중)`;
+  }
+}
+
+// ==========================================================================
+// 현장팀 15분 수사 타이머 (전자기기 제출 규정 동기화)
+// ==========================================================================
+let sceneTimerRemaining = 15 * 60;
+let sceneTimerInterval = null;
+
+function toggleSceneTimer() {
+  const btn = document.getElementById('btn-timer-toggle');
+  if (sceneTimerInterval) {
+    clearInterval(sceneTimerInterval);
+    sceneTimerInterval = null;
+    if (btn) btn.textContent = '▶ 시작';
+    showToast('현장 15분 타이머가 일시정지되었습니다.', 'info');
+  } else {
+    sceneTimerInterval = setInterval(() => {
+      if (sceneTimerRemaining > 0) {
+        sceneTimerRemaining--;
+        updateSceneTimerDisplay();
+      } else {
+        clearInterval(sceneTimerInterval);
+        sceneTimerInterval = null;
+        if (btn) btn.textContent = '▶ 시작';
+        alert('🚨 [15분 수사 종료] 현장 제한시간이 종료되었습니다! 수첩을 챙겨 즉시 퇴실하세요.');
+      }
+    }, 1000);
+    if (btn) btn.textContent = '⏸ 정지';
+    showToast('현장 15분 수사 타이머 시작! (전자기기 반입 금지 규정)', 'success');
+  }
+}
+
+function resetSceneTimer() {
+  if (sceneTimerInterval) {
+    clearInterval(sceneTimerInterval);
+    sceneTimerInterval = null;
+  }
+  sceneTimerRemaining = 15 * 60;
+  const btn = document.getElementById('btn-timer-toggle');
+  if (btn) btn.textContent = '▶ 시작';
+  updateSceneTimerDisplay();
+  showToast('현장 타이머가 15:00으로 리셋되었습니다.', 'info');
+}
+
+function updateSceneTimerDisplay() {
+  const display = document.getElementById('scene-timer-display');
+  if (!display) return;
+  const m = Math.floor(sceneTimerRemaining / 60).toString().padStart(2, '0');
+  const s = (sceneTimerRemaining % 60).toString().padStart(2, '0');
+  display.textContent = `${m}:${s}`;
+
+  display.classList.remove('warning-10', 'critical-13');
+  if (sceneTimerRemaining <= 120) {
+    display.classList.add('critical-13');
+  } else if (sceneTimerRemaining <= 300) {
+    display.classList.add('warning-10');
+  }
+}
+
+// ==========================================================================
+// 디스코드 수첩 메모 일괄 등록 (Discord Note Ingestion)
+// ==========================================================================
+function openDiscordImportModal() {
+  closeAllMenus();
+  const modal = document.getElementById('discord-import-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeDiscordImportModal() {
+  const modal = document.getElementById('discord-import-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function processDiscordImport() {
+  const input = document.getElementById('discord-raw-input')?.value || '';
+  if (!input.trim()) {
+    showToast('디스코드 메모 텍스트를 입력해주세요.', 'error');
+    return;
+  }
+
+  let currentRoom = '수사 현장';
+  let addedCount = 0;
+  const lines = input.split('\n');
+
+  lines.forEach(line => {
+    line = line.trim();
+    if (!line) return;
+
+    const roomMatch = line.match(/\[(.*?)\]/);
+    if (roomMatch) {
+      currentRoom = roomMatch[1];
+      return;
+    }
+
+    if (line.startsWith('-') || line.startsWith('•') || line.startsWith('*')) {
+      const content = line.replace(/^[-•*]\s*/, '');
+      const parts = content.split('/');
+      let title = parts[0]?.replace(/(?:단서|문제):\s*/, '').trim() || '현장 수첩 단서';
+      let loc = '';
+      let solution = '';
+      let flagPart = '';
+      let inference = '';
+
+      parts.forEach(p => {
+        p = p.trim();
+        if (/^위치[:：]/i.test(p)) loc = p.replace(/^위치[:：]\s*/i, '');
+        if (/^(?:정답|비번|암호|비밀번호)[:：]/i.test(p)) solution = p.replace(/^(?:정답|비번|암호|비밀번호)[:：]\s*/i, '');
+        if (/^(?:플래그|flag)[:：]/i.test(p)) flagPart = p.replace(/^(?:플래그|flag)[:：]\s*/i, '');
+        if (/^(?:추론|메모|비고)[:：]/i.test(p)) inference = p.replace(/^(?:추론|메모|비고)[:：]\s*/i, '');
+      });
+
+      const fMatch = line.match(/(?:SHA|CTF|FLAG|flag)\{[^}]+\}/i);
+      if (fMatch && !flagPart) flagPart = fMatch[0];
+
+      cluesData.push({
+        id: 'clue_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        title: title,
+        category: 'scenario',
+        room: currentRoom,
+        location: loc || currentRoom,
+        assignee: '현장팀',
+        status: flagPart || solution ? 'solved' : 'inprogress',
+        unlocks: '',
+        hintUsed: line.includes('힌트사용') || line.includes('힌트 쓰'),
+        content: content,
+        inference: inference,
+        solution: solution,
+        flagPart: flagPart,
+        isEscapeRoomTag: true,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+      addedCount++;
+    }
+  });
+
+  if (addedCount > 0) {
+    saveCluesToStorage();
+    renderClues();
+    updateFlagAssembler();
+    closeDiscordImportModal();
+    showToast(`디스코드 메모에서 ${addedCount}개의 단서를 성공적으로 등록했습니다! 🚀`, 'success');
+  } else {
+    showToast('파싱 가능한 단서 형식을 찾지 못했습니다. bullet(- 또는 *) 형식으로 입력해주세요.', 'error');
+  }
+}
+
+// ==========================================================================
+// 자물쇠 180도 상하 반전 (6 vs 9 Inversion) & 아나그램 연동
+// ==========================================================================
+function runLockInversion() {
+  const val = (document.getElementById('lock-inversion-input')?.value || '').trim();
+  const out = document.getElementById('anagram-output');
+  if (!val || !out) return;
+
+  const map180 = {
+    '0': '0', '1': '1', '6': '9', '8': '8', '9': '6',
+    '2': '2', '5': '5', 'b': 'q', 'd': 'p', 'p': 'd', 'q': 'b',
+    'n': 'u', 'u': 'n', 'w': 'm', 'm': 'w'
+  };
+
+  let invertedArr = [];
+  let isStrictRotatable = true;
+  for (let i = val.length - 1; i >= 0; i--) {
+    const ch = val[i].toLowerCase();
+    if (map180[ch]) {
+      invertedArr.push(map180[ch]);
+    } else {
+      invertedArr.push(ch + '?');
+      isStrictRotatable = false;
+    }
+  }
+  const invertedStr = invertedArr.join('');
+
+  out.innerHTML = `
+    <div style="margin-bottom:6px;"><b>🔄 180° 상하 반전 (거꾸로 보았을 때 번호):</b></div>
+    <div style="font-size:16px; font-weight:800; font-family:var(--font-mono); color:var(--accent-cyan); margin-bottom:6px;">
+      ${escapeHtml(invertedStr)} ${isStrictRotatable ? '✅ (완전 회전 가능)' : '<span style="font-size:11px; color:var(--accent-amber);">(비대칭 문자 포함)</span>'}
+    </div>
+    <div style="font-size:11px; color:var(--fg-secondary); line-height:1.5;">
+      • 원본: <code>${escapeHtml(val)}</code> ➔ 180도 회전 시 <b>${escapeHtml(invertedStr)}</b><br>
+      • <b>6 vs 9 팁</b>: 자물쇠를 거꾸로 든 상태에서 6을 9로 읽었을 수 있습니다. 확인선(눈금) 위치를 다시 정렬하세요.
+    </div>
+  `;
+}
+
+// ==========================================================================
+// 공식 대회 규정 동기화 데모 단서 (Demo Clues - SHA{...})
+// ==========================================================================
 function loadDemoClues() {
-  if (cluesData.length > 0 && !confirm('기존 단서 목록을 대회 규정 맞춤 예제 단서로 교체할까요?')) {
+  if (cluesData.length > 0 && !confirm('기존 단서 목록을 서울시립대 SHA × 도어락 공식 규격 데모 데이터로 교체할까요?')) {
     return;
   }
   cluesData = [
     {
       id: 'demo_1',
-      title: '서랍 속 메모지 [메인 시나리오 1단계]',
+      title: '책상 서랍 속 의문의 일기장 [현장 1 메인 시나리오]',
       category: 'scenario',
-      location: '연구실 책상 2번 서랍 안쪽',
-      assignee: '철수 (암호)',
+      scene: 'scene1',
+      room: '인문학관 201호',
+      location: '교수 책상 세 번째 서랍 이중바닥',
+      assignee: '철수 (현장팀)',
       status: 'solved',
-      unlocks: '벽면 4자리 다이얼 금고 번호 획득',
+      unlocks: '벽면 4자리 다이얼 금고 개방',
+      isEscapeRoomTag: true,
       hintUsed: false,
-      content: 'KHOOR ZRUOG! SODJ LV FWI{fdhvdu_flskhu_hdvb} (시저 Shift 3 암호)',
-      solution: 'HELLO WORLD! FLAG IS CTF{caesar_cipher_easy} -> 금고 비밀번호: 1984',
-      flagPart: 'CTF{scenario_step1_',
-      timestamp: '21:30'
+      content: 'WKLV LV VKD FWI! SODJ LV VKD{fdhvdu_flskhu_hdvb} (시저 Shift 3 암호)',
+      inference: '피해자가 비밀 금고 비밀번호(1984)를 시저 암호로 기록해 둠으로써 사건 발생 당일 금고 접근 권한이 내부자에게 있었음을 증명함.',
+      solution: 'THIS IS SHA CTF! FLAG IS SHA{caesar_cipher_easy} -> 금고 비밀번호: 1984',
+      flagPart: 'SHA{humanities_vault_1984}',
+      timestamp: '11:15'
     },
     {
       id: 'demo_2',
-      title: '금고 속 USB 및 암호문 [메인 시나리오 2단계]',
+      title: '금고 속 USB 및 암호화 파일 [현장 2 메인 시나리오]',
       category: 'scenario',
-      location: '벽면 소형 금고 내부',
-      assignee: '영희 (현장수색)',
-      status: 'inprogress',
-      unlocks: '비밀 실험실 전자도어락 개방',
+      scene: 'scene2',
+      room: '자연과학관 103호',
+      location: '벽면 소형 금고 내부 암호화 USB',
+      assignee: '영희 (현장팀)',
+      status: 'solved',
+      unlocks: '비밀 연구실 전자도어락 개방',
+      isEscapeRoomTag: true,
       hintUsed: false,
-      content: 'aHR0cHM6Ly9leGFtcGxlLmNvbS9wYXNzd29yZGlzY29vZDEyMzQ= (Base64 인코딩)',
-      solution: '',
-      flagPart: 'unlocked_vault_',
-      timestamp: '21:35'
+      content: 'U0hBe3NlY3JldF9yZXNlYXJjaF9kb29ybG9ja19rZXl9 (Base64 인코딩 문자열)',
+      inference: '피의자가 연구실 출입 키를 Base64로 난독화하여 USB에 보관하였으며, 이를 통해 피의자의 단독 침입 경로가 규명됨.',
+      solution: 'SHA{secret_research_doorlock_key}',
+      flagPart: 'SHA{secret_research_doorlock_key}',
+      timestamp: '11:45'
     },
     {
       id: 'demo_3',
-      title: '바탕화면 secret.png [독립 Jeopardy - 포렌식]',
+      title: 'CTF 서버 취약점 [추가 의뢰 - 웹 해킹]',
       category: 'jeopardy',
-      location: 'CTF 플랫폼 문제 / 공용 PC',
-      assignee: '철수 (포렌식)',
-      status: 'todo',
+      scene: 'online',
+      room: '21세기관 본부 (온라인)',
+      location: '문제 포털 http://ctf.sha.ac.kr/login',
+      assignee: '민수 (수사팀)',
+      status: 'solved',
       unlocks: '',
+      isEscapeRoomTag: false,
       hintUsed: false,
-      content: '확장자는 .png이지만 파일 열기 실패. 헤더 매직 바이트 확인 및 카빙 필요!',
-      solution: '',
-      flagPart: 'forensic_flag_',
-      timestamp: '21:38'
+      content: "admin' OR 1=1-- 주입 시 관리자 대시보드 플래그 노출",
+      inference: '온라인 관리자 시스템의 인증 로직에 SQL Injection 취약점이 존재하여 관리자 플래그 탈취 완료.',
+      solution: "admin' OR 1=1--",
+      flagPart: 'SHA{sqli_bypass_admin_success}',
+      timestamp: '13:20'
     },
     {
       id: 'demo_4',
-      title: '액자 뒤 의문의 QR 스티커 [독립 Jeopardy - 스테고]',
-      category: 'jeopardy',
-      location: '벽면 유화 액자 뒷면',
-      assignee: '민수 (추리)',
-      status: 'todo',
+      title: '손상된 이미지 파일 복구 [추가 의뢰 - 포렌식]',
+      category: 'forensics',
+      scene: 'online',
+      room: '21세기관 본부 (온라인)',
+      location: 'CTF 포털 evidence.png 다운로드',
+      assignee: '민수 (수사팀)',
+      status: 'solved',
       unlocks: '',
+      isEscapeRoomTag: false,
       hintUsed: false,
-      content: '스마트폰으로 촬영 후 워크벤치 3번 탭(스테고)에 업로드하여 자동 QR 인식 진행',
-      solution: '',
-      flagPart: 'master_key}',
-      timestamp: '21:40'
+      content: 'PNG 헤더가 00 00 00 00으로 변조됨 -> 89 50 4E 47 0D 0A 1A 0A로 복원 후 IHDR 청크 플래그 추출',
+      inference: '피의자가 은닉하려던 증거 이미지의 매직 바이트를 복원하여 범행 시각이 찍힌 사진 원본 플래그 획득.',
+      solution: 'PNG 매직 바이트 복원',
+      flagPart: 'SHA{forensics_png_header_restored}',
+      timestamp: '14:10'
     }
   ];
+
+  // Update scenes
+  crimeScenesData[0].room = '인문학관 201호';
+  crimeScenesData[0].flag = 'SHA{humanities_vault_1984}';
+  crimeScenesData[0].status = 'solved';
+
+  crimeScenesData[1].room = '자연과학관 103호';
+  crimeScenesData[1].flag = 'SHA{secret_research_doorlock_key}';
+  crimeScenesData[1].status = 'solved';
+
   saveCluesToStorage();
+  saveCrimeScenesToStorage();
   renderClues();
-  showToast('대회 운영규정 맞춤 예제 단서(시나리오 연계 + Jeopardy)가 로드되었습니다! 🎉', 'success');
+  renderCrimeScenes();
+  showToast('서울시립대 SHA × 도어락 공식 규정 맞춤 예제 데이터가 로드되었습니다! 🏆', 'success');
 }
 
 // ==========================================
@@ -3464,7 +4134,7 @@ ${memoPreview}
       "title": "단서 제목",
       "category": "scenario",
       "solution": "1234",
-      "flagPart": "CTF{part_"
+      "flagPart": "SHA{part_"
     }
   }
 ]
@@ -4478,7 +5148,7 @@ function loadCribDemo() {
   const c2 = "1720311e133800451b08402434054740130602410a061445060d00151a4004121a111306074117121b1b";
   document.getElementById('crib-drag-c1').value = c1;
   document.getElementById('crib-drag-c2').value = c2;
-  document.getElementById('crib-drag-word').value = "CTF{";
+  document.getElementById('crib-drag-word').value = "SHA{";
   runCribDragUI();
 }
 
