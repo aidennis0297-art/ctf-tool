@@ -731,7 +731,6 @@ ${c.flagPart || 'SHA{example_flag_here}'}
 
 function runPenaltyDefenseCheck() {
   const output = document.getElementById('penalty-defense-output');
-  if (!output) return;
 
   const teamName = (document.getElementById('report-team-name')?.value || '').trim();
   const conclusion = (document.getElementById('report-conclusion')?.value || '').trim();
@@ -784,27 +783,39 @@ function runPenaltyDefenseCheck() {
     passes.push(`모든 수사 현장 힌트 미사용(노힌트) 상태 확인`);
   }
 
-  if (warnings.length === 0) {
-    output.className = 'penalty-alert-box pass';
-    output.innerHTML = `
-      <div style="font-size:13px; font-weight:700; margin-bottom:6px;">✅ [검사 통과] 제8조 감점 위험 요소 0건! 3,000점 만점 요건 완벽 충족</div>
-      <ul style="margin:0; padding-left:18px; font-size:11px; line-height:1.6;">
-        ${passes.map(p => `<li>${p}</li>`).join('')}
-      </ul>
-      <div style="margin-top:8px; font-weight:600; color:#4ADE80;">이대로 PDF로 내보내어 roomescapectf2026@gmail.com 으로 제출하시면 됩니다!</div>
-    `;
-  } else {
-    output.className = 'penalty-alert-box';
-    output.innerHTML = `
-      <div style="font-size:13px; font-weight:700; margin-bottom:6px; color:#F87171;">⚠️ [감점 위험 감지] 총 ${warnings.length}건의 감점 및 규정 위반 주의사항이 있습니다:</div>
-      <ul style="margin:0; padding-left:18px; font-size:11px; line-height:1.6; color:#FECACA;">
-        ${warnings.map(w => `<li>${w}</li>`).join('')}
-      </ul>
-      <div style="margin-top:8px; font-size:11px; color:var(--text-muted);">
-        <b>정상 통과 항목 (${passes.length}건):</b> ${passes.join(' · ')}
-      </div>
-    `;
+  const result = {
+    passed: warnings.length === 0,
+    warnings: warnings,
+    passes: passes,
+    warningCount: warnings.length,
+    passCount: passes.length
+  };
+
+  if (output) {
+    if (warnings.length === 0) {
+      output.className = 'penalty-alert-box pass';
+      output.innerHTML = `
+        <div style="font-size:13px; font-weight:700; margin-bottom:6px;">✅ [검사 통과] 제8조 감점 위험 요소 0건! 3,000점 만점 요건 완벽 충족</div>
+        <ul style="margin:0; padding-left:18px; font-size:11px; line-height:1.6;">
+          ${passes.map(p => `<li>${p}</li>`).join('')}
+        </ul>
+        <div style="margin-top:8px; font-weight:600; color:#4ADE80;">이대로 PDF로 내보내어 roomescapectf2026@gmail.com 으로 제출하시면 됩니다!</div>
+      `;
+    } else {
+      output.className = 'penalty-alert-box';
+      output.innerHTML = `
+        <div style="font-size:13px; font-weight:700; margin-bottom:6px; color:#F87171;">⚠️ [감점 위험 감지] 총 ${warnings.length}건의 감점 및 규정 위반 주의사항이 있습니다:</div>
+        <ul style="margin:0; padding-left:18px; font-size:11px; line-height:1.6; color:#FECACA;">
+          ${warnings.map(w => `<li>${w}</li>`).join('')}
+        </ul>
+        <div style="margin-top:8px; font-size:11px; color:var(--text-muted);">
+          <b>정상 통과 항목 (${passes.length}건):</b> ${passes.join(' · ')}
+        </div>
+      `;
+    }
   }
+
+  return result;
 }
 
 function copyActiveReportText() {
@@ -1469,11 +1480,14 @@ function closeDiscordImportModal() {
   if (modal) modal.style.display = 'none';
 }
 
-function processDiscordImport() {
-  const input = document.getElementById('discord-raw-input')?.value || '';
-  if (!input.trim()) {
+function processDiscordImport(textArg) {
+  const inputEl = document.getElementById('discord-raw-input');
+  const input = (textArg !== undefined ? textArg : (inputEl?.value || '')).trim();
+  if (inputEl && textArg !== undefined) inputEl.value = textArg;
+
+  if (!input) {
     showToast('디스코드 메모 텍스트를 입력해주세요.', 'error');
-    return;
+    return { success: false, addedCount: 0 };
   }
 
   let currentRoom = '수사 현장';
@@ -1540,15 +1554,21 @@ function processDiscordImport() {
   } else {
     showToast('파싱 가능한 단서 형식을 찾지 못했습니다. bullet(- 또는 *) 형식으로 입력해주세요.', 'error');
   }
+  return { success: addedCount > 0, addedCount: addedCount };
 }
 
 // ==========================================================================
 // 자물쇠 180도 상하 반전 (6 vs 9 Inversion) & 아나그램 연동
 // ==========================================================================
-function runLockInversion() {
-  const val = (document.getElementById('lock-inversion-input')?.value || '').trim();
+function runLockInversion(codeArg) {
+  const inputEl = document.getElementById('lock-inversion-input');
+  const val = (codeArg !== undefined ? codeArg : (inputEl?.value || '')).trim();
+  if (inputEl && codeArg !== undefined) inputEl.value = codeArg;
   const out = document.getElementById('anagram-output');
-  if (!val || !out) return;
+
+  if (!val) {
+    return { original: '', inverted: '', isStrictRotatable: false };
+  }
 
   const map180 = {
     '0': '0', '1': '1', '6': '9', '8': '8', '9': '6',
@@ -1569,16 +1589,19 @@ function runLockInversion() {
   }
   const invertedStr = invertedArr.join('');
 
-  out.innerHTML = `
-    <div style="margin-bottom:6px;"><b>🔄 180° 상하 반전 (거꾸로 보았을 때 번호):</b></div>
-    <div style="font-size:16px; font-weight:800; font-family:var(--font-mono); color:var(--accent-cyan); margin-bottom:6px;">
-      ${escapeHtml(invertedStr)} ${isStrictRotatable ? '✅ (완전 회전 가능)' : '<span style="font-size:11px; color:var(--accent-amber);">(비대칭 문자 포함)</span>'}
-    </div>
-    <div style="font-size:11px; color:var(--fg-secondary); line-height:1.5;">
-      • 원본: <code>${escapeHtml(val)}</code> ➔ 180도 회전 시 <b>${escapeHtml(invertedStr)}</b><br>
-      • <b>6 vs 9 팁</b>: 자물쇠를 거꾸로 든 상태에서 6을 9로 읽었을 수 있습니다. 확인선(눈금) 위치를 다시 정렬하세요.
-    </div>
-  `;
+  if (out) {
+    out.innerHTML = `
+      <div style="margin-bottom:6px;"><b>🔄 180° 상하 반전 (거꾸로 보았을 때 번호):</b></div>
+      <div style="font-size:16px; font-weight:800; font-family:var(--font-mono); color:var(--accent-cyan); margin-bottom:6px;">
+        ${escapeHtml(invertedStr)} ${isStrictRotatable ? '✅ (완전 회전 가능)' : '<span style="font-size:11px; color:var(--accent-amber);">(비대칭 문자 포함)</span>'}
+      </div>
+      <div style="font-size:11px; color:var(--fg-secondary); line-height:1.5;">
+        • 원본: <code>${escapeHtml(val)}</code> ➔ 180도 회전 시 <b>${escapeHtml(invertedStr)}</b><br>
+        • <b>6 vs 9 팁</b>: 자물쇠를 거꾸로 든 상태에서 6을 9로 읽었을 수 있습니다. 확인선(눈금) 위치를 다시 정렬하세요.
+      </div>
+    `;
+  }
+  return { original: val, inverted: invertedStr, isStrictRotatable: isStrictRotatable };
 }
 
 // ==========================================================================
@@ -3424,7 +3447,20 @@ window.AppController = {
       directionSequence: (typeof directionalSeq !== 'undefined') ? directionalSeq.slice() : [],
       cryptoMasterInput: cryptoInput ? cryptoInput.value : '',
       masterFlag: parts.join('') || null,
-      hasStegoImage: !!currentLoadedImage
+      hasStegoImage: !!currentLoadedImage,
+      crimeScenes: (typeof crimeScenesData !== 'undefined') ? crimeScenesData.map(s => ({
+        id: s.id,
+        name: s.name,
+        room: s.room || '',
+        flag: s.flag || '',
+        entries: s.entries || 0,
+        hintUsed: !!s.hintUsed,
+        status: s.status || 'todo'
+      })) : [],
+      sceneTimer: {
+        remainingSeconds: (typeof sceneTimerRemaining !== 'undefined') ? sceneTimerRemaining : 900,
+        isRunning: (typeof sceneTimerInterval !== 'undefined') && !!sceneTimerInterval
+      }
     };
   },
 
@@ -3472,13 +3508,16 @@ window.AppController = {
       title: clueInfo.title,
       category: clueInfo.category || 'scenario',
       location: clueInfo.location || '',
+      room: clueInfo.room || '',
       assignee: clueInfo.assignee || 'AI 에이전트',
       status: clueInfo.status || 'todo',
       unlocks: clueInfo.unlocks || '',
       hintUsed: !!clueInfo.hintUsed,
       content: clueInfo.content || '',
+      inference: clueInfo.inference || '',
       solution: clueInfo.solution || '',
       flagPart: clueInfo.flagPart || '',
+      isEscapeRoomTag: clueInfo.isEscapeRoomTag !== undefined ? !!clueInfo.isEscapeRoomTag : true,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     cluesData.unshift(clueObj);
@@ -3504,6 +3543,10 @@ window.AppController = {
     if (patch.content !== undefined) clue.content = patch.content;
     if (patch.category !== undefined) clue.category = patch.category;
     if (patch.hintUsed !== undefined) clue.hintUsed = patch.hintUsed;
+    if (patch.room !== undefined) clue.room = patch.room;
+    if (patch.location !== undefined) clue.location = patch.location;
+    if (patch.inference !== undefined) clue.inference = patch.inference;
+    if (patch.isEscapeRoomTag !== undefined) clue.isEscapeRoomTag = patch.isEscapeRoomTag;
 
     saveCluesToStorage();
     renderClues();
@@ -3616,6 +3659,64 @@ window.AppController = {
   showToast: function(message, type = 'info') {
     showToast(message, type);
     return { success: true };
+  },
+
+  // 9. Crime Scenes operations (v3.0)
+  updateCrimeScene: function({ index, sceneId, room, flag, entries, hintUsed, status } = {}) {
+    let idx = index;
+    if (idx === undefined && sceneId !== undefined) {
+      idx = typeof sceneId === 'number' ? sceneId - 1 : crimeScenesData.findIndex(s => s.id === sceneId || s.name.includes(sceneId));
+    }
+    if (idx === undefined || idx < 0 || idx >= crimeScenesData.length) {
+      throw new Error(`유효하지 않은 사건 현장 번호입니다 (0~4): ${index || sceneId}`);
+    }
+    const scene = crimeScenesData[idx];
+    if (room !== undefined) scene.room = String(room).trim();
+    if (flag !== undefined) {
+      scene.flag = String(flag).trim();
+      if (scene.flag && scene.status !== 'solved') scene.status = 'solved';
+    }
+    if (entries !== undefined) scene.entries = Number(entries);
+    if (hintUsed !== undefined) scene.hintUsed = Boolean(hintUsed);
+    if (status !== undefined) scene.status = status;
+    saveCrimeScenesToStorage();
+    renderCrimeScenes();
+    updatePerfectClearStatus();
+    return { success: true, scene: scene };
+  },
+
+  // 10. Scene 15-min Timer control (v3.0)
+  controlSceneTimer: function({ action = 'start', seconds } = {}) {
+    if (seconds !== undefined && typeof seconds === 'number') {
+      sceneTimerRemaining = seconds;
+      updateSceneTimerDisplay();
+    }
+    const act = (action || '').toLowerCase();
+    if (act === 'start') {
+      if (!sceneTimerInterval) toggleSceneTimer();
+    } else if (act === 'pause' || act === 'stop') {
+      if (sceneTimerInterval) toggleSceneTimer();
+    } else if (act === 'reset') {
+      resetSceneTimer();
+    }
+    return { success: true, action: act, remaining: sceneTimerRemaining, isRunning: !!sceneTimerInterval };
+  },
+
+  // 11. Lock 180° Inversion (v3.0)
+  invertLock: function({ code } = {}) {
+    if (!code) throw new Error('반전할 자물쇠 코드(code)가 필요합니다.');
+    return runLockInversion(code);
+  },
+
+  // 12. Penalty Defense Check (v3.0)
+  runPenaltyDefenseCheck: function() {
+    return runPenaltyDefenseCheck();
+  },
+
+  // 13. Discord Notes Ingestion (v3.0)
+  importDiscordNotes: function({ text } = {}) {
+    if (!text) throw new Error('임포트할 디스코드 메모 텍스트(text)가 필요합니다.');
+    return processDiscordImport(text);
   }
 };
 
@@ -4103,15 +4204,15 @@ ${memoPreview}
    - 다계층 심층 방어: XML 의미론적 캡슐화, 이중 LLM 가드레일, DP-SGD(그래디언트 L2 클리핑 C 및 가우시안 노이즈), Min-Max PGD 적대적 훈련, SafeTensors 포맷 전면 도입 및 가중치 서명
 
 ===================================================================
-[당신이 코드로 직접 조작할 수 있는 AppController 도구 목록]
+[당신이 코드로 직접 조작할 수 있는 AppController 13대 도구 목록]
 ===================================================================
-당신은 조언을 제공할 뿐만 아니라, 사용자의 요청("단서 등록해줘", "수사 보드 정리해줘", "메모장에 적어줘", "시저 암호 복호화해줘" 등)에 대해 아래 JSON 액션 블록을 응답에 포함하여 프로그램을 100% 직접 조작할 수 있습니다.
+당신은 조언을 제공할 뿐만 아니라, 사용자의 요청("단서 등록해줘", "수사 보드 정리해줘", "메모장에 적어줘", "시저/Base64 암호 풀어줘", "자물쇠 180도 반전해줘", "현장 1 클리어 처리해줘", "15분 타이머 시작해줘", "제8조 감점 검사해줘", "디스코드 메모 넣어줘" 등)에 대해 아래 JSON 액션 블록을 응답에 포함하여 프로그램을 100% 직접 조작할 수 있습니다.
 
 1. setMemoText({ text: string, append: boolean })
    - 메모장에 텍스트를 작성하거나 덧붙입니다 (추리 요약이나 보고서 자동 기록 시 유용).
-2. addClue({ title, category, status, location, assignee, solution, flagPart, unlocks, hintUsed, content })
+2. addClue({ title, category, status, location, room, assignee, solution, flagPart, unlocks, hintUsed, content, inference })
    - 수사 보드에 새 단서를 등록합니다. (category: 'scenario'|'jeopardy'|'crypto'|'stego'|'forensics'|'physical'|'misc', status: 'todo'|'inprogress'|'solved')
-3. updateClue(idOrTitle, { status, solution, flagPart, unlocks, content })
+3. updateClue(idOrTitle, { status, solution, flagPart, unlocks, content, room, location, inference })
    - 기존 단서를 해결 완료로 바꾸거나 해독값/플래그를 수정합니다.
 4. deleteClue(idOrTitle)
    - 단서를 삭제합니다.
@@ -4122,7 +4223,17 @@ ${memoPreview}
 7. setStegoFilters({ contrast, brightness, threshold, invert, grayscale })
    - 사진 보정 필터 조절 (예: 어두운 곳 UV 잉크 복원 위해 invert: true, contrast: 2.5)
 8. generateReport({ teamName, members, conclusion })
-   - 제3조 1항 보너스 점수용 최종 수사 보고서 자동 작성 및 모달 열기
+   - 제8조 3,000점 만점 수사보고서 자동 작성 및 모달 열기
+9. updateCrimeScene({ index: 0~4, room: string, flag: string, entries: number, hintUsed: boolean, status: string })
+   - 5개 사건 현장별 호수, 획득 플래그(SHA{...}), 1회 입장 규칙 카운트, 노힌트 상태 설정
+10. controlSceneTimer({ action: 'start'|'pause'|'reset', seconds: number })
+   - 현장 15분 작전 카운트다운 타이머 시작/일시정지/리셋
+11. invertLock({ code: string })
+   - 자물쇠 180도 상하 반전 (6↔9 등 자물쇠를 거꾸로 보았을 때의 코드 추출)
+12. runPenaltyDefenseCheck({})
+   - 제8조 감점 방지(출처 누락, 추론 미작성, 1회 입장 위반) 전수 검사기 실행
+13. importDiscordNotes({ text: string })
+   - 현장팀 퇴장 후 전송한 디스코드 수첩 메모 텍스트를 파싱하여 단서 카드로 일괄 등록
 
 [액션 실행 문법]:
 프로그램 조작이 필요한 경우, 응답에 반드시 아래와 같은 \`\`\`action 블록을 포함하세요:
@@ -4133,8 +4244,21 @@ ${memoPreview}
     "args": {
       "title": "단서 제목",
       "category": "scenario",
+      "room": "인문학관 201호",
+      "location": "교탁 서랍 안쪽",
       "solution": "1234",
-      "flagPart": "SHA{part_"
+      "flagPart": "SHA{scene1_part}"
+    }
+  },
+  {
+    "action": "updateCrimeScene",
+    "args": {
+      "index": 0,
+      "room": "인문학관 201호",
+      "flag": "SHA{scene1_part}",
+      "entries": 1,
+      "hintUsed": false,
+      "status": "solved"
     }
   }
 ]
@@ -4418,6 +4542,11 @@ function appendActionFeedbackCards(results) {
     else if (r.action === 'switchTab') summary = `탭 이동: ${r.args.tabName || r.args}`;
     else if (r.action === 'updateClue') summary = `단서 업데이트`;
     else if (r.action === 'runCrypto') summary = `암호 해독 (${r.args.cipher}): "${(r.result?.result || '').slice(0, 30)}"`;
+    else if (r.action === 'updateCrimeScene') summary = `현장 업데이트: ${r.args.room || r.args.flag || ('현장 ' + (r.args.index !== undefined ? r.args.index + 1 : ''))}`;
+    else if (r.action === 'controlSceneTimer') summary = `15분 타이머 제어: ${r.args.action || '토글'}`;
+    else if (r.action === 'invertLock') summary = `자물쇠 180° 반전: ${r.args.code} ➔ ${r.result?.inverted || ''}`;
+    else if (r.action === 'runPenaltyDefenseCheck') summary = `제8조 감점 검사 (${r.result?.passed ? '통과' : '경고'})`;
+    else if (r.action === 'importDiscordNotes') summary = `디스코드 메모 임포트 (${r.result?.addedCount || 0}건)`;
     else summary = `${r.action}`;
 
     html += `<div class="ai-action-detail">• <b>${escapeHtml(summary)}</b> ${r.success ? '<span style="color:#16a34a;">✔</span>' : `<span style="color:#dc2626;">(실패: ${escapeHtml(r.error)})</span>`}</div>`;
@@ -5555,5 +5684,15 @@ function escapeHtmlSafe(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    getAppController: () => (typeof window !== 'undefined' ? window.AppController : null),
+    parseAndExecuteAiActions: typeof parseAndExecuteAiActions !== 'undefined' ? parseAndExecuteAiActions : null,
+    executeActionList: typeof executeActionList !== 'undefined' ? executeActionList : null,
+    buildAgentSystemPrompt: typeof buildAgentSystemPrompt !== 'undefined' ? buildAgentSystemPrompt : null
+  };
+}
+
 
 
