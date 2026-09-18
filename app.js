@@ -24,7 +24,7 @@ function showToast(message, type = 'info') {
     toast.style.opacity = '0';
     toast.style.transform = 'translateY(10px)';
     toast.style.transition = 'all 0.3s ease';
-    setTimeout(() => toast.remove(), 300);
+    setTimeout(() => { if (toast && typeof toast.remove === 'function') toast.remove(); }, 300);
   }, 2800);
 }
 
@@ -5829,7 +5829,9 @@ if (typeof module !== 'undefined' && module.exports) {
     getAppController: () => (typeof window !== 'undefined' ? window.AppController : null),
     parseAndExecuteAiActions: typeof parseAndExecuteAiActions !== 'undefined' ? parseAndExecuteAiActions : null,
     executeActionList: typeof executeActionList !== 'undefined' ? executeActionList : null,
-    buildAgentSystemPrompt: typeof buildAgentSystemPrompt !== 'undefined' ? buildAgentSystemPrompt : null
+    buildAgentSystemPrompt: typeof buildAgentSystemPrompt !== 'undefined' ? buildAgentSystemPrompt : null,
+    loadCluesFromStorage: typeof loadCluesFromStorage !== 'undefined' ? loadCluesFromStorage : null,
+    loadCrimeScenesFromStorage: typeof loadCrimeScenesFromStorage !== 'undefined' ? loadCrimeScenesFromStorage : null
   };
 }
 

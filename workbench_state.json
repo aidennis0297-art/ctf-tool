@@ -1,0 +1,3 @@
+{
+  "ctf_escape_clues": "[{\"id\":\"clue_1789736668234_642\",\"title\":\"인문학관 서랍 쪽지\",\"category\":\"scenario\",\"location\":\"서랍 안쪽\",\"room\":\"인문학관 201호\",\"assignee\":\"AI 에이전트\",\"status\":\"todo\",\"unlocks\":\"\",\"hintUsed\":false,\"content\":\"\",\"inference\":\"1984년 설립일과 일치하는 비밀번호\",\"solution\":\"1984\",\"flagPart\":\"SHA{humanities_vault_1984}\",\"isEscapeRoomTag\":true,\"timestamp\":\"오후 10:04\"}]"
+}
